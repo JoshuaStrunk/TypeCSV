@@ -6,6 +6,23 @@ import * as parse from "csv-parse/lib/sync";
 (function() {
 
     let pathToData = path.join(process.cwd(), process.argv[2]);
+    let pathToOutDir = path.join(process.cwd(), "out");
+    if(process.argv.length > 3) 
+    {
+        pathToOutDir = path.join(process.cwd(), process.argv[3]);
+    }
+
+    try {
+        fs.mkdirSync(pathToOutDir);
+    }
+    catch(e) {
+        if(e.code !== "EEXIST") {
+            console.error(JSON.stringify(e));
+            return;
+        }
+    }
+
+
     try
     {
         let test = fs.readdirSync(pathToData);
@@ -16,20 +33,20 @@ import * as parse from "csv-parse/lib/sync";
 
             if(path.extname(fileName) === ".csv")
             {
-                genTable(path.join(pathToData, fileName));
+                genTable(path.join(pathToData, fileName), pathToOutDir);
             }
         }
     }
     catch(e) 
     {
-        if(e.code === "ENOTDIR") genTable(pathToData);
+        if(e.code === "ENOTDIR") genTable(pathToData, pathToOutDir);
         else console.error(e);
     }
 
 
 }())
 
-function genTable(filePath:string) {
+function genTable(filePath:string, outPath:string) {
      fs.readFile(filePath, 'utf8', (err, data) => {
 
         if(err != null) {
@@ -79,8 +96,8 @@ function genTable(filePath:string) {
             }
         }
 
-        let csFile = "public class {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
-        let tsFile = "interface {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
+        let csFile = "public class {0} {\n".replace("{0}", tableName);
+        let tsFile = "interface {0} {\n".replace("{0}", tableName);
         for(let i=0; i<headerRow.length;i++) {
             let type = headerRow[i].propertyType;
             let name = headerRow[i].propertyName;
@@ -89,6 +106,19 @@ function genTable(filePath:string) {
         }
         csFile += "}\n";
         tsFile += "}\n";
+
+
+        fs.writeFile(
+            path.join(outPath, `${tableName}.cs`), 
+            csFile, 
+            (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+        );
+
+        fs.writeFile(
+            path.join(outPath, `${tableName}.d.ts`), 
+            tsFile, 
+            (err) => { if(err !== null) console.error(JSON.stringify(err)) }
+        );
 
     });
 }

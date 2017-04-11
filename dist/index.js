@@ -5,24 +5,37 @@ var fs = require("fs");
 var parse = require("csv-parse/lib/sync");
 (function () {
     var pathToData = path.join(process.cwd(), process.argv[2]);
+    var pathToOutDir = path.join(process.cwd(), "out");
+    if (process.argv.length > 3) {
+        pathToOutDir = path.join(process.cwd(), process.argv[3]);
+    }
+    try {
+        fs.mkdirSync(pathToOutDir);
+    }
+    catch (e) {
+        if (e.code !== "EEXIST") {
+            console.error(JSON.stringify(e));
+            return;
+        }
+    }
     try {
         var test = fs.readdirSync(pathToData);
         console.log(JSON.stringify(test));
         for (var i = 0; i < test.length; i++) {
             var fileName = test[i];
             if (path.extname(fileName) === ".csv") {
-                genTable(path.join(pathToData, fileName));
+                genTable(path.join(pathToData, fileName), pathToOutDir);
             }
         }
     }
     catch (e) {
         if (e.code === "ENOTDIR")
-            genTable(pathToData);
+            genTable(pathToData, pathToOutDir);
         else
             console.error(e);
     }
 }());
-function genTable(filePath) {
+function genTable(filePath, outPath) {
     fs.readFile(filePath, 'utf8', function (err, data) {
         if (err != null) {
             switch (err.code) {
@@ -65,8 +78,8 @@ function genTable(filePath) {
                 jsonified[pk][headerEntry.propertyName] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
         }
-        var csFile = "public class {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
-        var tsFile = "interface {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
+        var csFile = "public class {0} {\n".replace("{0}", tableName);
+        var tsFile = "interface {0} {\n".replace("{0}", tableName);
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_1 = headerRow[i].propertyName;
@@ -75,6 +88,10 @@ function genTable(filePath) {
         }
         csFile += "}\n";
         tsFile += "}\n";
+        fs.writeFile(path.join(outPath, tableName + ".cs"), csFile, function (err) { if (err !== null)
+            console.error(JSON.stringify(err)); });
+        fs.writeFile(path.join(outPath, tableName + ".d.ts"), tsFile, function (err) { if (err !== null)
+            console.error(JSON.stringify(err)); });
     });
 }
 function typeEntry(val, type) {
