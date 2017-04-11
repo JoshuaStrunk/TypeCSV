@@ -5,9 +5,32 @@ import * as parse from "csv-parse/lib/sync";
 
 (function() {
 
-    let pathToCSV = path.join(process.cwd(), process.argv[2]);
+    let pathToData = path.join(process.cwd(), process.argv[2]);
+    try
+    {
+        let test = fs.readdirSync(pathToData);
+        console.log(JSON.stringify(test));
+        for(let i=0; i<test.length; i++) 
+        {
+            let fileName = test[i];
 
-    fs.readFile(pathToCSV, 'utf8', (err, data) => {
+            if(path.extname(fileName) === ".csv")
+            {
+                genTable(path.join(pathToData, fileName));
+            }
+        }
+    }
+    catch(e) 
+    {
+        if(e.code === "ENOTDIR") genTable(pathToData);
+        else console.error(e);
+    }
+
+
+}())
+
+function genTable(filePath:string) {
+     fs.readFile(filePath, 'utf8', (err, data) => {
 
         if(err != null) {
             switch(err.code) {
@@ -18,11 +41,7 @@ import * as parse from "csv-parse/lib/sync";
         }
 
         let parsedCSV : string[][] = parse(data);
-        let tableName  = path.basename(pathToCSV, '.csv');
-
-        console.log(data);
-        console.log(" --- ");
-        console.log(JSON.stringify(parsedCSV, null, ' '));
+        let tableName  = path.basename(filePath, '.csv');
 
         let headerRow:HeaderRowEntry[] = [];
 
@@ -44,7 +63,6 @@ import * as parse from "csv-parse/lib/sync";
             }
 
         });
-        console.log(JSON.stringify(headerRow));
 
         let jsonified:{[primaryKey:string] : any} = {};
         for(let i =1; i<parsedCSV.length; i++) {
@@ -61,10 +79,8 @@ import * as parse from "csv-parse/lib/sync";
             }
         }
 
-        console.log(JSON.stringify(jsonified, null, '\t'));
-
-        let csFile = "public class {0} {\n".replace("{0}", path.basename(pathToCSV, '.csv'));
-        let tsFile = "interface {0} {\n".replace("{0}", path.basename(pathToCSV, '.csv'));
+        let csFile = "public class {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
+        let tsFile = "interface {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
         for(let i=0; i<headerRow.length;i++) {
             let type = headerRow[i].propertyType;
             let name = headerRow[i].propertyName;
@@ -74,20 +90,18 @@ import * as parse from "csv-parse/lib/sync";
         csFile += "}\n";
         tsFile += "}\n";
 
-        console.log(csFile);
-        console.log(tsFile);
-
-
     });
+}
 
-}())
+
+
 
 function typeEntry(val:string, type:string) {
     return validTypes[type](val);
 }
 
 
-const validTypes = {
+let validTypes = {
     "Any":        (val:string) => val,
     "String":     (val:string) => val,
 

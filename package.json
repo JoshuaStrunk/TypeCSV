@@ -4,7 +4,7 @@
   "description": "Library to make typed csv file awesome.",
   "main": "dist/index.js",
   "scripts": {
-    "test": "node dist/index.js test/commaTest.csv",
+    "test": "node dist/index.js test/tables test/out",
     "tsc": "tsc"
   },
   "keywords": [

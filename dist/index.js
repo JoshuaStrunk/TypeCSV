@@ -4,8 +4,26 @@ var path = require("path");
 var fs = require("fs");
 var parse = require("csv-parse/lib/sync");
 (function () {
-    var pathToCSV = path.join(process.cwd(), process.argv[2]);
-    fs.readFile(pathToCSV, 'utf8', function (err, data) {
+    var pathToData = path.join(process.cwd(), process.argv[2]);
+    try {
+        var test = fs.readdirSync(pathToData);
+        console.log(JSON.stringify(test));
+        for (var i = 0; i < test.length; i++) {
+            var fileName = test[i];
+            if (path.extname(fileName) === ".csv") {
+                genTable(path.join(pathToData, fileName));
+            }
+        }
+    }
+    catch (e) {
+        if (e.code === "ENOTDIR")
+            genTable(pathToData);
+        else
+            console.error(e);
+    }
+}());
+function genTable(filePath) {
+    fs.readFile(filePath, 'utf8', function (err, data) {
         if (err != null) {
             switch (err.code) {
                 case "ENOENT":
@@ -18,10 +36,7 @@ var parse = require("csv-parse/lib/sync");
             return;
         }
         var parsedCSV = parse(data);
-        var tableName = path.basename(pathToCSV, '.csv');
-        console.log(data);
-        console.log(" --- ");
-        console.log(JSON.stringify(parsedCSV, null, ' '));
+        var tableName = path.basename(filePath, '.csv');
         var headerRow = [];
         var primaryColumnIndex = 0;
         parsedCSV[0].forEach(function (value, index) {
@@ -36,7 +51,6 @@ var parse = require("csv-parse/lib/sync");
                 primaryColumnIndex = index;
             }
         });
-        console.log(JSON.stringify(headerRow));
         var jsonified = {};
         for (var i = 1; i < parsedCSV.length; i++) {
             var entryRow = parsedCSV[i];
@@ -51,9 +65,8 @@ var parse = require("csv-parse/lib/sync");
                 jsonified[pk][headerEntry.propertyName] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
         }
-        console.log(JSON.stringify(jsonified, null, '\t'));
-        var csFile = "public class {0} {\n".replace("{0}", path.basename(pathToCSV, '.csv'));
-        var tsFile = "interface {0} {\n".replace("{0}", path.basename(pathToCSV, '.csv'));
+        var csFile = "public class {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
+        var tsFile = "interface {0} {\n".replace("{0}", path.basename(filePath, '.csv'));
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_1 = headerRow[i].propertyName;
@@ -62,10 +75,8 @@ var parse = require("csv-parse/lib/sync");
         }
         csFile += "}\n";
         tsFile += "}\n";
-        console.log(csFile);
-        console.log(tsFile);
     });
-}());
+}
 function typeEntry(val, type) {
     return validTypes[type](val);
 }

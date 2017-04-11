@@ -1,0 +1,4 @@
+ObjectName:String:PrimaryKey,simpleString:String,simpleInt:Int
+object1,TestItem3,1
+object2,TestItem3,2
+object3,TestItem3,3
