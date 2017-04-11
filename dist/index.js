@@ -18,6 +18,7 @@ var parse = require("csv-parse/lib/sync");
             return;
         }
         var parsedCSV = parse(data);
+        var tableName = path.basename(pathToCSV, '.csv');
         console.log(data);
         console.log(" --- ");
         console.log(JSON.stringify(parsedCSV, null, ' '));
@@ -41,7 +42,8 @@ var parse = require("csv-parse/lib/sync");
             var entryRow = parsedCSV[i];
             var pk = entryRow[primaryColumnIndex];
             if (jsonified.hasOwnProperty(pk)) {
-                throw new Error("PrimiaryKey integrity compromised duplicate key " + pk + " found.");
+                console.error("Exited before completion: " + tableName + "'s PrimiaryKey(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate key " + pk + " found on row " + (i + 1) + ".");
+                return;
             }
             jsonified[pk] = {};
             for (var j = 0; j < headerRow.length; j++) {
@@ -70,8 +72,26 @@ function typeEntry(val, type) {
 var validTypes = {
     "Any": function (val) { return val; },
     "String": function (val) { return val; },
-    "Int": function (val) { return Number(val); },
-    "Float": function (val) { return Number(val); },
+    "Int": function (val) {
+        var parsedInt = parseInt(val);
+        if (parsedInt !== NaN && parsedInt === parseFloat(val)) {
+            return parsedInt;
+        }
+        else {
+            console.error("Attempt to convert " + val + " to int failed");
+            return null;
+        }
+    },
+    "Float": function (val) {
+        var parsedFloat = parseFloat(val);
+        if (parsedFloat !== NaN) {
+            return parsedFloat;
+        }
+        else {
+            console.error("Attempt to convert " + val + " to float failed");
+            return null;
+        }
+    },
     "Int[]": function (val) { return val.split(',').map(function (innerVal) { return validTypes["Int"](innerVal); }); },
     "String[]": function (val) { return val.split(',').map(function (innerVal) { return validTypes["String"](innerVal); }); },
 };
