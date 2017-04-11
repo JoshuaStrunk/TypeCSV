@@ -50,6 +50,9 @@ import * as parse from "csv-parse/lib/sync";
         for(let i =1; i<parsedCSV.length; i++) {
             let entryRow = parsedCSV[i];
             let pk = entryRow[primaryColumnIndex];
+            if(jsonified.hasOwnProperty(pk)) {
+                throw new Error(`PrimiaryKey integrity compromised duplicate key ${pk} found.`)
+            }
             jsonified[pk] = {};
             for(let j=0; j<headerRow.length; j++) {
                 let headerEntry = headerRow[j];

@@ -4,7 +4,20 @@
     "version": "0.1.0",
     "command": "npm",
     "isShellCommand": true,
-    "args": ["run", "tsc", "--", "-p", "."],
     "showOutput": "always",
-    "problemMatcher": "$tsc"
+    "echoCommand": true,
+
+    "tasks": [
+        {
+            "taskName": "run",
+            "args":  [ "tsc", "--", "-p", "."],
+            "isBuildCommand": true,
+            "problemMatcher": "$tsc"
+        },
+        {
+            "taskName": "run",
+            "args": ["test"],
+            "isTestCommand": true
+        }
+    ]
 }

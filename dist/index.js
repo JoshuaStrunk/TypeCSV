@@ -40,6 +40,9 @@ var parse = require("csv-parse/lib/sync");
         for (var i = 1; i < parsedCSV.length; i++) {
             var entryRow = parsedCSV[i];
             var pk = entryRow[primaryColumnIndex];
+            if (jsonified.hasOwnProperty(pk)) {
+                throw new Error("PrimiaryKey integrity compromised duplicate key " + pk + " found.");
+            }
             jsonified[pk] = {};
             for (var j = 0; j < headerRow.length; j++) {
                 var headerEntry = headerRow[j];
