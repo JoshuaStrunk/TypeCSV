@@ -166,8 +166,10 @@ let validTypes = {
         }
     },
 
-    "Int[]":      (val:string) => parse(val)[0].map((innerVal) => validTypes["Int"](innerVal)),
-    "String[]":   (val:string) => parse(val)[0].map((innerVal) => validTypes["String"](innerVal))   
+    "Int[]":        (val:string) => parse(val)[0].map((innerVal) => validTypes["Int"](innerVal)),
+    "String[]":     (val:string) => parse(val)[0].map((innerVal) => validTypes["String"](innerVal)),
+    "Int[][]":      (val:string) => parse(val)[0].map((innerVal) => validTypes["Int[]"](innerVal)),
+    "String[][]":   (val:string) => parse(val)[0].map((innerVal) => validTypes["String[]"](innerVal)), 
 };
 
 const cSharpProp = "public {type} {name};\n";
@@ -182,6 +184,9 @@ function toCSharpType(type:string) {
 
         case "Int[]": return "int[]";
         case "String[]": return "string[]";
+
+        case "Int[]": return "int[][]";
+        case "String[][]": return "string[][]";
     }
 }
 
@@ -199,6 +204,10 @@ function toTypeScriptType(type:string){
             return "number[]";
         case "String[]":    
             return "string[]";
+        case "Int[][]":
+            return "number[][]";
+        case "String[][]":
+            return "string[][]";
     }
 }
 

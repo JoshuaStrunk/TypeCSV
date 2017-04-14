@@ -5,4 +5,6 @@ interface commaTest {
    LootChance : number,
    TestIntList : number[],
    TestStringList : string[],
+   TestIntMatrix : number[][],
+   TestStringMatrix : string[][],
 }

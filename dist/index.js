@@ -123,7 +123,9 @@ var validTypes = {
         }
     },
     "Int[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int"](innerVal); }); },
-    "String[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String"](innerVal); }); }
+    "String[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String"](innerVal); }); },
+    "Int[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int[]"](innerVal); }); },
+    "String[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String[]"](innerVal); }); },
 };
 var cSharpProp = "public {type} {name};\n";
 function toCSharpType(type) {
@@ -135,6 +137,8 @@ function toCSharpType(type) {
         case "Float": return "float";
         case "Int[]": return "int[]";
         case "String[]": return "string[]";
+        case "Int[]": return "int[][]";
+        case "String[][]": return "string[][]";
     }
 }
 var typeScriptProp = "{name} : {type},\n";
@@ -150,5 +154,9 @@ function toTypeScriptType(type) {
             return "number[]";
         case "String[]":
             return "string[]";
+        case "Int[][]":
+            return "number[][]";
+        case "String[][]":
+            return "string[][]";
     }
 }

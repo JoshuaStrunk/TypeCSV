@@ -13,6 +13,40 @@
 			"Testing out, commas",
 			"Testing out, commas ",
 			"Testing out, commas"
+		],
+		"TestIntMatrix": [
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			]
+		],
+		"TestStringMatrix": [
+			[
+				"test",
+				" this",
+				" out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			]
 		]
 	},
 	"TestItem2": {
@@ -29,6 +63,40 @@
 			"Is this good, to, ,, test",
 			"Is this good, to, ,, test",
 			"Is this good, to, ,, test"
+		],
+		"TestIntMatrix": [
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			]
+		],
+		"TestStringMatrix": [
+			[
+				"test",
+				" this",
+				" out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			]
 		]
 	},
 	"TestItem3": {
@@ -45,6 +113,40 @@
 			"testing no comma",
 			"testing no comma",
 			" testing no comma"
+		],
+		"TestIntMatrix": [
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			]
+		],
+		"TestStringMatrix": [
+			[
+				"test",
+				" this",
+				" out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			]
 		]
 	},
 	"TestItem4": {
@@ -61,6 +163,40 @@
 			"testing \" qutoing\" this test",
 			"testing \" qutoing\" this test",
 			"testing \" qutoing\" this test"
+		],
+		"TestIntMatrix": [
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			]
+		],
+		"TestStringMatrix": [
+			[
+				"test",
+				" this",
+				" out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			]
 		]
 	},
 	"TestItem5": {
@@ -77,6 +213,40 @@
 			"testing comma,  with \"hey\" quotes",
 			"testing comma,  with \"hey\" quotes",
 			"testing comma,  with \"hey\" quotes"
+		],
+		"TestIntMatrix": [
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			],
+			[
+				1,
+				2,
+				3
+			]
+		],
+		"TestStringMatrix": [
+			[
+				"test",
+				" this",
+				" out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			],
+			[
+				"test",
+				"this",
+				"out"
+			]
 		]
 	}
 }
