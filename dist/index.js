@@ -92,6 +92,8 @@ function genTable(filePath, outPath) {
             console.error(JSON.stringify(err)); });
         fs.writeFile(path.join(outPath, tableName + ".d.ts"), tsFile, function (err) { if (err !== null)
             console.error(JSON.stringify(err)); });
+        fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified, null, '\t'), function (err) { if (err !== null)
+            console.error(JSON.stringify(err)); });
     });
 }
 function typeEntry(val, type) {
@@ -120,8 +122,8 @@ var validTypes = {
             return null;
         }
     },
-    "Int[]": function (val) { return val.split(',').map(function (innerVal) { return validTypes["Int"](innerVal); }); },
-    "String[]": function (val) { return val.split(',').map(function (innerVal) { return validTypes["String"](innerVal); }); },
+    "Int[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int"](innerVal); }); },
+    "String[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String"](innerVal); }); }
 };
 var cSharpProp = "public {type} {name};\n";
 function toCSharpType(type) {

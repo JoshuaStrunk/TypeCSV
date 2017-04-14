@@ -117,8 +117,14 @@ function genTable(filePath:string, outPath:string) {
         fs.writeFile(
             path.join(outPath, `${tableName}.d.ts`), 
             tsFile, 
-            (err) => { if(err !== null) console.error(JSON.stringify(err)) }
+            (err) => { if(err !== null) console.error(JSON.stringify(err)); }
         );
+
+        fs.writeFile(
+            path.join(outPath, `${tableName}.json`),
+            JSON.stringify(jsonified, null, '\t'),
+            (err) => {if(err !== null) console.error(JSON.stringify(err)); }
+        )
 
     });
 }
@@ -160,8 +166,8 @@ let validTypes = {
         }
     },
 
-    "Int[]":      (val:string) => val.split(',').map( (innerVal) => validTypes["Int"](innerVal) ),
-    "String[]":   (val:string) => val.split(',').map( (innerVal) => validTypes["String"](innerVal) ),   
+    "Int[]":      (val:string) => parse(val)[0].map((innerVal) => validTypes["Int"](innerVal)),
+    "String[]":   (val:string) => parse(val)[0].map((innerVal) => validTypes["String"](innerVal))   
 };
 
 const cSharpProp = "public {type} {name};\n";

@@ -1,6 +1,6 @@
 ItemName:String:PrimaryKey,Health:Int,Description:String,LootChance:Float,TestIntList:Int[],TestStringList:String[]
-TestItem1,4,"Testing out, commas ",1,"5,5,5","simple, test, string"
-TestItem2,1.1,"Is this good, to, ,, test",5.5,"0,1,2","simple, test, string"
-TestItem3,0,testing no comma,10,"2,3,4","simple, test, string"
-TestItem4,0,"testing "" qutoing"" this test",0.99,"0,0,0","simple, test, string"
-TestItem5,1,"testing comma,  with ""hey"" quotes",0,"1,1,1","simple, test, string"
+TestItem1,4,"Testing out, commas ",1,"5,5,5","""Testing out, commas"",""Testing out, commas "",""Testing out, commas"""
+TestItem2,1.1,"Is this good, to, ,, test",5.5,"0,1,2","""Is this good, to, ,, test"",""Is this good, to, ,, test"",""Is this good, to, ,, test"""
+TestItem3,0,testing no comma,10,"2,3,4","testing no comma,testing no comma, testing no comma"
+TestItem4,0,"testing "" qutoing"" this test",0.99,"0,0,0","""testing """" qutoing"""" this test"",""testing """" qutoing"""" this test"",""testing """" qutoing"""" this test"""
+TestItem5,1,"testing comma,  with ""hey"" quotes",0,"1,1,1","""testing comma,  with """"hey"""" quotes"",""testing comma,  with """"hey"""" quotes"",""testing comma,  with """"hey"""" quotes"""

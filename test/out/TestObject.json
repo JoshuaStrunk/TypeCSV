@@ -1,0 +1,17 @@
+{
+	"object1": {
+		"ObjectName": "object1",
+		"simpleString": "TestItem3",
+		"simpleInt": 1
+	},
+	"object2": {
+		"ObjectName": "object2",
+		"simpleString": "TestItem3",
+		"simpleInt": 2
+	},
+	"object3": {
+		"ObjectName": "object3",
+		"simpleString": "TestItem3",
+		"simpleInt": 3
+	}
+}

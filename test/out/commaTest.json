@@ -1,0 +1,82 @@
+{
+	"TestItem1": {
+		"ItemName": "TestItem1",
+		"Health": 4,
+		"Description": "Testing out, commas ",
+		"LootChance": 1,
+		"TestIntList": [
+			5,
+			5,
+			5
+		],
+		"TestStringList": [
+			"Testing out, commas",
+			"Testing out, commas ",
+			"Testing out, commas"
+		]
+	},
+	"TestItem2": {
+		"ItemName": "TestItem2",
+		"Health": null,
+		"Description": "Is this good, to, ,, test",
+		"LootChance": 5.5,
+		"TestIntList": [
+			0,
+			1,
+			2
+		],
+		"TestStringList": [
+			"Is this good, to, ,, test",
+			"Is this good, to, ,, test",
+			"Is this good, to, ,, test"
+		]
+	},
+	"TestItem3": {
+		"ItemName": "TestItem3",
+		"Health": 0,
+		"Description": "testing no comma",
+		"LootChance": 10,
+		"TestIntList": [
+			2,
+			3,
+			4
+		],
+		"TestStringList": [
+			"testing no comma",
+			"testing no comma",
+			" testing no comma"
+		]
+	},
+	"TestItem4": {
+		"ItemName": "TestItem4",
+		"Health": 0,
+		"Description": "testing \" qutoing\" this test",
+		"LootChance": 0.99,
+		"TestIntList": [
+			0,
+			0,
+			0
+		],
+		"TestStringList": [
+			"testing \" qutoing\" this test",
+			"testing \" qutoing\" this test",
+			"testing \" qutoing\" this test"
+		]
+	},
+	"TestItem5": {
+		"ItemName": "TestItem5",
+		"Health": 1,
+		"Description": "testing comma,  with \"hey\" quotes",
+		"LootChance": 0,
+		"TestIntList": [
+			1,
+			1,
+			1
+		],
+		"TestStringList": [
+			"testing comma,  with \"hey\" quotes",
+			"testing comma,  with \"hey\" quotes",
+			"testing comma,  with \"hey\" quotes"
+		]
+	}
+}
