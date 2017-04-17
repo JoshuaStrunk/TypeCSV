@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var path = require("path");
 var fs = require("fs");
 var parse = require("csv-parse/lib/sync");
+var config = null;
 (function () {
     var pathToData = path.join(process.cwd(), process.argv[2]);
     var pathToOutDir = path.join(process.cwd(), "out");
@@ -21,6 +22,10 @@ var parse = require("csv-parse/lib/sync");
     try {
         var test = fs.readdirSync(pathToData);
         console.log(JSON.stringify(test));
+        //Get out the config file
+        var configFile = test.filter(function (value) { return value == "tcsvconfig.json"; });
+        console.assert(configFile.length > 0, "No config file found");
+        config = JSON.parse(fs.readFileSync(path.join(pathToData, configFile[0]), "utf8"));
         for (var i = 0; i < test.length; i++) {
             var fileName = test[i];
             if (path.extname(fileName) === ".csv") {
@@ -78,22 +83,30 @@ function genTable(filePath, outPath) {
                 jsonified[pk][headerEntry.propertyName] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
         }
-        var csFile = "public class {0} {\n".replace("{0}", tableName);
-        var tsFile = "interface {0} {\n".replace("{0}", tableName);
+        var generatedFiles = {};
+        for (var genId in config.codeGenerators) {
+            if (config.codeGenerators.hasOwnProperty(genId)) {
+                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", tableName) + '\n';
+            }
+        }
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_1 = headerRow[i].propertyName;
-            csFile += "   " + cSharpProp.replace("{type}", toCSharpType(type)).replace("{name}", name_1);
-            tsFile += "   " + typeScriptProp.replace("{type}", toTypeScriptType(type)).replace("{name}", name_1);
+            for (var genId in config.codeGenerators) {
+                if (config.codeGenerators.hasOwnProperty(genId)) {
+                    generatedFiles[genId] += '\t' + config.codeGenerators[genId].objectProperty
+                        .replace("{propertyType}", config.codeGenerators[genId].typeMapping[type])
+                        .replace("{propertyName}", name_1) + '\n';
+                }
+            }
         }
-        csFile += "}\n";
-        tsFile += "}\n";
-        fs.writeFile(path.join(outPath, tableName + ".cs"), csFile, function (err) { if (err !== null)
-            console.error(JSON.stringify(err)); });
-        fs.writeFile(path.join(outPath, tableName + ".d.ts"), tsFile, function (err) { if (err !== null)
-            console.error(JSON.stringify(err)); });
-        fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified, null, '\t'), function (err) { if (err !== null)
-            console.error(JSON.stringify(err)); });
+        for (var genId in config.codeGenerators) {
+            if (config.codeGenerators.hasOwnProperty(genId)) {
+                generatedFiles[genId] += config.codeGenerators[genId].objectClose + '\n';
+                fs.writeFile(path.join(outPath, (tableName + "{ext}").replace("{ext}", config.codeGenerators[genId].ext)), generatedFiles[genId], function (err) { if (err !== null)
+                    console.error(JSON.stringify(err)); });
+            }
+        }
     });
 }
 function typeEntry(val, type) {
@@ -127,36 +140,3 @@ var validTypes = {
     "Int[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int[]"](innerVal); }); },
     "String[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String[]"](innerVal); }); },
 };
-var cSharpProp = "public {type} {name};\n";
-function toCSharpType(type) {
-    switch (type) {
-        case "Any":
-        case "String":
-            return "string";
-        case "Int": return "int";
-        case "Float": return "float";
-        case "Int[]": return "int[]";
-        case "String[]": return "string[]";
-        case "Int[]": return "int[][]";
-        case "String[][]": return "string[][]";
-    }
-}
-var typeScriptProp = "{name} : {type},\n";
-function toTypeScriptType(type) {
-    switch (type) {
-        case "Any":
-        case "String":
-            return "string";
-        case "Int":
-        case "Float":
-            return "number";
-        case "Int[]":
-            return "number[]";
-        case "String[]":
-            return "string[]";
-        case "Int[][]":
-            return "number[][]";
-        case "String[][]":
-            return "string[][]";
-    }
-}

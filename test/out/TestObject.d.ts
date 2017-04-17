@@ -1,5 +1,5 @@
 interface TestObject {
-   ObjectName : string,
-   simpleString : string,
-   simpleInt : number,
+	ObjectName : string,
+	simpleString : string,
+	simpleInt : number,
 }

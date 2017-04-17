@@ -1,0 +1,42 @@
+{
+    "codeGenerators" : {
+        "csharp": {
+            "ext":".cs",
+            "objectOpen":"public class {objectName} {",
+            "objectClose": "}",
+            "objectProperty": "public {propertyType} {propertyName};",
+            "typeMapping":{
+                "Any": "string",    
+                "String":"string",
+                "Int": "int",
+                "Float": "float",
+                "String[]": "string[]",
+                "Int[]": "int[]",
+                "Float[]": "float[]",
+                "String[][]": "string[][]",
+                "Int[][]": "int[][]",
+                "Float[][]": "float[][]"
+            },
+            "listType":"{propertyType}[]"
+        },
+        "typescript":{
+            "ext":".d.ts",
+            "objectOpen":"interface {objectName} {",
+            "objectClose": "}",
+            "objectProperty": "{propertyName} : {propertyType},",
+            "typeMapping":{
+                "Any": "string",    
+                "String":"string",
+                "Int": "number",
+                "Float": "number",
+                "String[]": "string[]",
+                "Int[]": "number[]",
+                "Float[]": "number[]",
+                "String[][]": "string[][]",
+                "Int[][]": "number[][]",
+                "Float[][]": "number[][]"
+            },
+            "listType":"{propertyType}[]"
+        }
+    }
+}

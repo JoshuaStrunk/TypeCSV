@@ -3,7 +3,11 @@ import * as fs from "fs";
 
 import * as parse from "csv-parse/lib/sync";
 
+
+let config :tscvConfigEntry = null;
+
 (function() {
+
 
     let pathToData = path.join(process.cwd(), process.argv[2]);
     let pathToOutDir = path.join(process.cwd(), "out");
@@ -27,6 +31,13 @@ import * as parse from "csv-parse/lib/sync";
     {
         let test = fs.readdirSync(pathToData);
         console.log(JSON.stringify(test));
+
+        //Get out the config file
+        let configFile = test.filter( value => value == "tcsvconfig.json" );
+        console.assert(configFile.length>0, "No config file found");
+        config = JSON.parse(fs.readFileSync(path.join(pathToData, configFile[0]),"utf8" ));
+
+
         for(let i=0; i<test.length; i++) 
         {
             let fileName = test[i];
@@ -96,40 +107,41 @@ function genTable(filePath:string, outPath:string) {
             }
         }
 
-        let csFile = "public class {0} {\n".replace("{0}", tableName);
-        let tsFile = "interface {0} {\n".replace("{0}", tableName);
+        let generatedFiles: {[key:string]: string} = {}
+
+        for(let genId in config.codeGenerators) {
+            if(config.codeGenerators.hasOwnProperty(genId))
+            {
+                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", tableName)+'\n';
+            }
+        }
+
         for(let i=0; i<headerRow.length;i++) {
             let type = headerRow[i].propertyType;
             let name = headerRow[i].propertyName;
-            csFile += "   "+ cSharpProp.replace("{type}", toCSharpType(type)).replace("{name}", name);
-            tsFile += "   "+ typeScriptProp.replace("{type}", toTypeScriptType(type)).replace("{name}", name)
+
+            for(let genId in config.codeGenerators) {
+                if(config.codeGenerators.hasOwnProperty(genId))
+                {
+                    generatedFiles[genId] += '\t' + config.codeGenerators[genId].objectProperty
+                        .replace("{propertyType}", config.codeGenerators[genId].typeMapping[type])
+                        .replace("{propertyName}", name) + '\n';
+                }
+            }
         }
-        csFile += "}\n";
-        tsFile += "}\n";
-
-
-        fs.writeFile(
-            path.join(outPath, `${tableName}.cs`), 
-            csFile, 
-            (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-        );
-
-        fs.writeFile(
-            path.join(outPath, `${tableName}.d.ts`), 
-            tsFile, 
-            (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-        );
-
-        fs.writeFile(
-            path.join(outPath, `${tableName}.json`),
-            JSON.stringify(jsonified, null, '\t'),
-            (err) => {if(err !== null) console.error(JSON.stringify(err)); }
-        )
-
+        for(let genId in config.codeGenerators) {
+            if(config.codeGenerators.hasOwnProperty(genId))
+            {
+                generatedFiles[genId] += config.codeGenerators[genId].objectClose+'\n';
+                 fs.writeFile(
+                    path.join(outPath, `${tableName}{ext}`.replace("{ext}", config.codeGenerators[genId].ext)), 
+                    generatedFiles[genId], 
+                    (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+                );
+            }
+        }
     });
 }
-
-
 
 
 function typeEntry(val:string, type:string) {
@@ -172,45 +184,24 @@ let validTypes = {
     "String[][]":   (val:string) => parse(val)[0].map((innerVal) => validTypes["String[]"](innerVal)), 
 };
 
-const cSharpProp = "public {type} {name};\n";
 
-function toCSharpType(type:string) {
-    switch(type) {
-        case "Any":
-        case "String": 
-            return "string";
-        case "Int": return "int";
-        case "Float": return "float";
-
-        case "Int[]": return "int[]";
-        case "String[]": return "string[]";
-
-        case "Int[]": return "int[][]";
-        case "String[][]": return "string[][]";
-    }
+interface tscvConfigEntry {
+    codeGenerators: {[key:string]: configCodeGeneratorEntry}
 }
 
-const typeScriptProp = "{name} : {type},\n";
-
-function toTypeScriptType(type:string){
-    switch(type) {
-        case "Any":       
-        case "String":
-            return "string";
-        case "Int":
-        case "Float":
-            return "number";
-        case "Int[]":       
-            return "number[]";
-        case "String[]":    
-            return "string[]";
-        case "Int[][]":
-            return "number[][]";
-        case "String[][]":
-            return "string[][]";
-    }
+interface configCodeGeneratorEntry {
+    ext:string,
+    objectOpen:string,
+    objectClose:string,
+    objectProperty:string,
+    typeMapping:{
+        Any: string,
+        String: string,
+        Int: string,
+        Float: string,
+    },
+    listType:string
 }
-
 
 
 interface HeaderRowEntry
