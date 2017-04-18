@@ -9,13 +9,7 @@
                 "Any": "string",    
                 "String":"string",
                 "Int": "int",
-                "Float": "float",
-                "String[]": "string[]",
-                "Int[]": "int[]",
-                "Float[]": "float[]",
-                "String[][]": "string[][]",
-                "Int[][]": "int[][]",
-                "Float[][]": "float[][]"
+                "Float": "float"
             },
             "listType":"{propertyType}[]"
         },
@@ -28,13 +22,7 @@
                 "Any": "string",    
                 "String":"string",
                 "Int": "number",
-                "Float": "number",
-                "String[]": "string[]",
-                "Int[]": "number[]",
-                "Float[]": "number[]",
-                "String[][]": "string[][]",
-                "Int[][]": "number[][]",
-                "Float[][]": "number[][]"
+                "Float": "number"
             },
             "listType":"{propertyType}[]"
         }
