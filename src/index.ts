@@ -121,10 +121,11 @@ function genTable(filePath:string, outPath:string) {
             let name = headerRow[i].propertyName;
 
             for(let genId in config.codeGenerators) {
+                let codeGenerator = config.codeGenerators[genId];
                 if(config.codeGenerators.hasOwnProperty(genId))
                 {
-                    generatedFiles[genId] += '\t' + config.codeGenerators[genId].objectProperty
-                        .replace("{propertyType}", config.codeGenerators[genId].typeMapping[type])
+                    generatedFiles[genId] += '\t' + codeGenerator.objectProperty
+                        .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
                         .replace("{propertyName}", name) + '\n';
                 }
             }
@@ -143,9 +144,23 @@ function genTable(filePath:string, outPath:string) {
     });
 }
 
+function mapType(type:string, typeMapping:TypeMapping, listType:string) :string
+{
+    let mappedType = "{propertyType}";
+    let typeInfo = getBaseTypeAndListLevels(type);
+    for(let i=0; i<typeInfo.listLevels; i++) {
+        mappedType = mappedType.replace("{propertyType}", listType);
+    }
+    return mappedType.replace("{propertyType}", typeMapping[typeInfo.baseType]);
+    
+    
+}
+
 
 function typeEntry(val:string, type:string) {
-    return validTypes[type](val);
+
+    let typeInfo = getBaseTypeAndListLevels(type);
+    return typeValue(val, typeInfo.baseType, typeInfo.listLevels);
 }
 
 
@@ -176,13 +191,23 @@ let validTypes = {
             console.error(`Attempt to convert ${val} to float failed`);
             return null;
         }
-    },
-
-    "Int[]":        (val:string) => parse(val)[0].map((innerVal) => validTypes["Int"](innerVal)),
-    "String[]":     (val:string) => parse(val)[0].map((innerVal) => validTypes["String"](innerVal)),
-    "Int[][]":      (val:string) => parse(val)[0].map((innerVal) => validTypes["Int[]"](innerVal)),
-    "String[][]":   (val:string) => parse(val)[0].map((innerVal) => validTypes["String[]"](innerVal)), 
+    }
 };
+
+function getBaseTypeAndListLevels(val:string) {
+    let i=0;
+    for(;val.slice(val.length-2) === "[]"; i++, val= val.slice(0,val.length-2)) { }
+   
+    return {
+        listLevels: i,
+        baseType: val
+    };
+}
+
+function typeValue(val:string, baseType:string, listLevels:number) {
+    if(listLevels < 1) return validTypes[baseType](val);
+    else return parse(val)[0].map((innerVal) => typeValue(innerVal, baseType, listLevels-1));
+}
 
 
 interface tscvConfigEntry {
@@ -194,13 +219,15 @@ interface configCodeGeneratorEntry {
     objectOpen:string,
     objectClose:string,
     objectProperty:string,
-    typeMapping:{
-        Any: string,
-        String: string,
-        Int: string,
-        Float: string,
-    },
+    typeMapping: TypeMapping,
     listType:string
+}
+
+interface TypeMapping {
+    Any: string,
+    String: string,
+    Int: string,
+    Float: string,
 }
 
 

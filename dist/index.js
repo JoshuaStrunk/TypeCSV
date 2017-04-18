@@ -93,9 +93,10 @@ function genTable(filePath, outPath) {
             var type = headerRow[i].propertyType;
             var name_1 = headerRow[i].propertyName;
             for (var genId in config.codeGenerators) {
+                var codeGenerator = config.codeGenerators[genId];
                 if (config.codeGenerators.hasOwnProperty(genId)) {
-                    generatedFiles[genId] += '\t' + config.codeGenerators[genId].objectProperty
-                        .replace("{propertyType}", config.codeGenerators[genId].typeMapping[type])
+                    generatedFiles[genId] += '\t' + codeGenerator.objectProperty
+                        .replace("{propertyType}", mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
                         .replace("{propertyName}", name_1) + '\n';
                 }
             }
@@ -109,8 +110,17 @@ function genTable(filePath, outPath) {
         }
     });
 }
+function mapType(type, typeMapping, listType) {
+    var mappedType = "{propertyType}";
+    var typeInfo = getBaseTypeAndListLevels(type);
+    for (var i = 0; i < typeInfo.listLevels; i++) {
+        mappedType = mappedType.replace("{propertyType}", listType);
+    }
+    return mappedType.replace("{propertyType}", typeMapping[typeInfo.baseType]);
+}
 function typeEntry(val, type) {
-    return validTypes[type](val);
+    var typeInfo = getBaseTypeAndListLevels(type);
+    return typeValue(val, typeInfo.baseType, typeInfo.listLevels);
 }
 var validTypes = {
     "Any": function (val) { return val; },
@@ -134,9 +144,19 @@ var validTypes = {
             console.error("Attempt to convert " + val + " to float failed");
             return null;
         }
-    },
-    "Int[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int"](innerVal); }); },
-    "String[]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String"](innerVal); }); },
-    "Int[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["Int[]"](innerVal); }); },
-    "String[][]": function (val) { return parse(val)[0].map(function (innerVal) { return validTypes["String[]"](innerVal); }); },
+    }
 };
+function getBaseTypeAndListLevels(val) {
+    var i = 0;
+    for (; val.slice(val.length - 2) === "[]"; i++, val = val.slice(0, val.length - 2)) { }
+    return {
+        listLevels: i,
+        baseType: val
+    };
+}
+function typeValue(val, baseType, listLevels) {
+    if (listLevels < 1)
+        return validTypes[baseType](val);
+    else
+        return parse(val)[0].map(function (innerVal) { return typeValue(innerVal, baseType, listLevels - 1); });
+}
