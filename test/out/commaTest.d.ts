@@ -1,10 +1,10 @@
 interface commaTest {
-	ItemName : string,
-	Health : number,
-	Description : string,
-	LootChance : number,
-	TestIntList : number[],
-	TestStringList : string[],
-	TestIntMatrix : number[][],
-	TestStringMatrix : string[][],
+	itemName : string,
+	health : number,
+	description : string,
+	lootChance : number,
+	testIntList : number[],
+	testStringList : string[],
+	testIntMatrix : number[][],
+	testStringMatrix : string[][],
 }
