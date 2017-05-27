@@ -16,16 +16,7 @@ let config :tscvConfigEntry = null;
         pathToOutDir = path.join(process.cwd(), process.argv[3]);
     }
 
-    try {
-        fs.mkdirSync(pathToOutDir);
-    }
-    catch(e) {
-        if(e.code !== "EEXIST") {
-            console.error(JSON.stringify(e));
-            return;
-        }
-    }
-
+    tryMakeDir(pathToOutDir);
 
     try
     {
@@ -57,7 +48,21 @@ let config :tscvConfigEntry = null;
 
 }())
 
-function genTable(filePath:string, outPath:string) {
+function tryMakeDir(path:string)
+{
+    try {
+        fs.mkdirSync(path);
+    }
+    catch(e) {
+        if(e.code !== "EEXIST") {
+            console.error(JSON.stringify(e));
+            return;
+        }
+    }
+}
+
+
+function genTable(filePath:string, pathToOutDir:string) {
      fs.readFile(filePath, 'utf8', (err, data) => {
 
         if(err != null) {
@@ -179,8 +184,10 @@ function genTable(filePath:string, outPath:string) {
                 let headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
+            let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+            tryMakeDir(jsonifedTablesOutDir);
             fs.writeFile(
-                    path.join(outPath, `${tableName}.json`), 
+                    path.join(jsonifedTablesOutDir, `${tableName}.json`), 
                     JSON.stringify(jsonified, null, "\t"), 
                     (err) => { if(err !== null) console.error(JSON.stringify(err)); }
                 );
@@ -217,8 +224,10 @@ function genTable(filePath:string, outPath:string) {
             if(config.codeGenerators.hasOwnProperty(genId))
             {
                 generatedFiles[genId] += config.codeGenerators[genId].objectClose+'\n';
+                let generatedCodeOutDir = path.join(pathToOutDir, genId);
+                tryMakeDir(generatedCodeOutDir);
                  fs.writeFile(
-                    path.join(outPath, `${tableName}{ext}`.replace("{ext}", config.codeGenerators[genId].ext)), 
+                    path.join(generatedCodeOutDir, `${tableName}{ext}`.replace("{ext}", config.codeGenerators[genId].ext)), 
                     generatedFiles[genId], 
                     (err) => { if(err !== null) console.error(JSON.stringify(err)); }
                 );

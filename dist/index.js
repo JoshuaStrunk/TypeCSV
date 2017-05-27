@@ -10,15 +10,7 @@ var config = null;
     if (process.argv.length > 3) {
         pathToOutDir = path.join(process.cwd(), process.argv[3]);
     }
-    try {
-        fs.mkdirSync(pathToOutDir);
-    }
-    catch (e) {
-        if (e.code !== "EEXIST") {
-            console.error(JSON.stringify(e));
-            return;
-        }
-    }
+    tryMakeDir(pathToOutDir);
     try {
         var test = fs.readdirSync(pathToData);
         console.log(JSON.stringify(test));
@@ -40,7 +32,18 @@ var config = null;
             console.error(e);
     }
 }());
-function genTable(filePath, outPath) {
+function tryMakeDir(path) {
+    try {
+        fs.mkdirSync(path);
+    }
+    catch (e) {
+        if (e.code !== "EEXIST") {
+            console.error(JSON.stringify(e));
+            return;
+        }
+    }
+}
+function genTable(filePath, pathToOutDir) {
     fs.readFile(filePath, 'utf8', function (err, data) {
         if (err != null) {
             switch (err.code) {
@@ -137,7 +140,9 @@ function genTable(filePath, outPath) {
                 var headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
-            fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified, null, "\t"), function (err) { if (err !== null)
+            var jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+            tryMakeDir(jsonifedTablesOutDir);
+            fs.writeFile(path.join(jsonifedTablesOutDir, tableName + ".json"), JSON.stringify(jsonified, null, "\t"), function (err) { if (err !== null)
                 console.error(JSON.stringify(err)); });
         }
         var generatedFiles = {};
@@ -165,7 +170,9 @@ function genTable(filePath, outPath) {
         for (var genId in config.codeGenerators) {
             if (config.codeGenerators.hasOwnProperty(genId)) {
                 generatedFiles[genId] += config.codeGenerators[genId].objectClose + '\n';
-                fs.writeFile(path.join(outPath, (tableName + "{ext}").replace("{ext}", config.codeGenerators[genId].ext)), generatedFiles[genId], function (err) { if (err !== null)
+                var generatedCodeOutDir = path.join(pathToOutDir, genId);
+                tryMakeDir(generatedCodeOutDir);
+                fs.writeFile(path.join(generatedCodeOutDir, (tableName + "{ext}").replace("{ext}", config.codeGenerators[genId].ext)), generatedFiles[genId], function (err) { if (err !== null)
                     console.error(JSON.stringify(err)); });
             }
         }
