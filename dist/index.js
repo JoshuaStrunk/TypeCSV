@@ -137,7 +137,7 @@ function genTable(filePath, outPath) {
                 var headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
-            fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified), function (err) { if (err !== null)
+            fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified, null, "\t"), function (err) { if (err !== null)
                 console.error(JSON.stringify(err)); });
         }
         var generatedFiles = {};

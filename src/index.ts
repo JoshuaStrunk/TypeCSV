@@ -181,7 +181,7 @@ function genTable(filePath:string, outPath:string) {
             }
             fs.writeFile(
                     path.join(outPath, `${tableName}.json`), 
-                    JSON.stringify(jsonified), 
+                    JSON.stringify(jsonified, null, "\t"), 
                     (err) => { if(err !== null) console.error(JSON.stringify(err)); }
                 );
         }
