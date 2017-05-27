@@ -73,6 +73,8 @@ function genTable(filePath:string, outPath:string) {
 
         let headerRow:HeaderRowEntry[] = [];
 
+        let normalizedPropertyNames:string[] = [];
+
         let primaryColumnIndex = 0;
 
         parsedCSV[0].forEach((value, index) => {
@@ -80,10 +82,22 @@ function genTable(filePath:string, outPath:string) {
 
             let splitHeaderValue = value.split(':');
             headerRow.push({
-                propertyName:   splitHeaderValue[0],
+                propertyName:   normalizePropertyName(splitHeaderValue[0]),
                 propertyType:   splitHeaderValue.length > 1 ? splitHeaderValue[1]: "Any",
                 specialKey:     splitHeaderValue.length > 2 ? splitHeaderValue[2]: null,
             });
+
+            let normalizedPropertyName = normalizePropertyName(splitHeaderValue[0]);
+            console.log(JSON.stringify(normalizedPropertyName));
+            if(normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1  )
+            {
+                console.error(`Exited before completion: ${tableName}'s PropertyName(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate PropertyName found.`);
+                return;
+            }
+            else
+            {
+                normalizedPropertyNames.push(normalizedPropertyName.join(""));
+            }
 
             //Override default primary Column?
             if(headerRow[headerRow.length-1].specialKey == "PrimaryKey") {
@@ -92,18 +106,20 @@ function genTable(filePath:string, outPath:string) {
 
         });
 
+
+
         let jsonified:{[primaryKey:string] : any} = {};
         for(let i =1; i<parsedCSV.length; i++) {
             let entryRow = parsedCSV[i];
-            let pk = entryRow[primaryColumnIndex];
-            if(jsonified.hasOwnProperty(pk)) {
-                console.error(`Exited before completion: ${tableName}'s PrimiaryKey(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate key ${pk} found on row ${i+1}.`);
+            let primaryKeyValue = entryRow[primaryColumnIndex];
+            if(jsonified.hasOwnProperty(primaryKeyValue)) {
+                console.error(`Exited before completion: ${tableName}'s PrimiaryKey(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate key ${primaryKeyValue} found on row ${i+1}.`);
                 return;
             }
-            jsonified[pk] = {};
+            jsonified[primaryKeyValue] = {};
             for(let j=0; j<headerRow.length; j++) {
                 let headerEntry = headerRow[j];
-                jsonified[pk][headerEntry.propertyName] = typeEntry(entryRow[j], headerEntry.propertyType);
+                jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
         }
 
@@ -126,7 +142,7 @@ function genTable(filePath:string, outPath:string) {
                 {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
                         .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                        .replace("{propertyName}", name) + '\n';
+                        .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling)) + '\n';
                 }
             }
         }
@@ -155,6 +171,63 @@ function mapType(type:string, typeMapping:TypeMapping, listType:string) :string
     
     
 }
+
+function normalizePropertyName(rawPropertyName:string):string[]
+{
+    return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
+    .replace(/_/g, " ")//Then split out the underscore_spacing to underscore spacing
+    .split(" ") //then split on spaces
+    .map(entry => entry.toLocaleLowerCase()) //remove casing
+    .filter(entry => entry !== ""); //remove empty strings
+}
+
+type CaseStyling = "CamelCase" | "camelCase" | "snake_case" | "SCREAMING_SNAKE_CASE" | "kebab-case" | "Train-Case" | "stUdLyCaPs";
+
+function mapPropertyName(normalizedPropertyName:string[], styling:CaseStyling):string
+{
+    switch(styling)
+    {
+        case "CamelCase":
+        return normalizedPropertyName.map(word => captializeLetterAt(word, 0)).join("");
+
+        case "camelCase" :
+        return normalizedPropertyName[0] + normalizedPropertyName.slice(1).map(word => captializeLetterAt(word, 0)).join("");
+
+        case "snake_case" :
+        return normalizedPropertyName.join("_");
+
+        case "SCREAMING_SNAKE_CASE" :
+        return normalizedPropertyName.map(word => word.toUpperCase()).join("_");
+
+        case "kebab-case" :
+        return normalizedPropertyName.join("-");
+
+        case "Train-Case" :
+        return normalizedPropertyName.map(word => captializeLetterAt(word, 0)).join("-");
+
+        case "stUdLyCaPs":
+        return  stUdLyCaPsiT(normalizedPropertyName.join(""));
+    }
+}
+
+function captializeLetterAt(targetString:string, targetIndex:number)
+{
+    return  targetString.slice(0,targetIndex)+targetString.charAt(targetIndex).toUpperCase() + targetString.slice(targetIndex+1);
+}
+
+function stUdLyCaPsiT(targetString:string):string
+{
+    for(let i=0; i<targetString.length;i++)
+    {
+        if(Math.random() > .5)
+        {
+            targetString = captializeLetterAt(targetString, i);
+        }
+    }
+
+    return targetString;
+}
+
 
 
 function typeEntry(val:string, type:string) {
@@ -219,6 +292,7 @@ interface configCodeGeneratorEntry {
     objectOpen:string,
     objectClose:string,
     objectProperty:string,
+    objectPropertyNameStyling:CaseStyling,
     typeMapping: TypeMapping,
     listType:string
 }
@@ -230,10 +304,9 @@ interface TypeMapping {
     Float: string,
 }
 
-
 interface HeaderRowEntry
 { 
-    propertyName:string, 
+    propertyName:string[], 
     propertyType:string, 
     specialKey:string 
 }

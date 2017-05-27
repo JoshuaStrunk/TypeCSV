@@ -1,4 +1,4 @@
-ObjectName:String:PrimaryKey,simpleString:String,simpleInt:Int
-object1,TestItem3,1
-object2,TestItem3,2
-object3,TestItem3,3
+ObjectName:String:PrimaryKey,simpleString:String,simpleInt:Int,SIMCardTest,testing this out,Test Test,TES tEst,broken Promises,Und_ers_coreTest
+object1,TestItem3,1,string,string,string,string,string,string
+object2,TestItem3,2,string,string,string,string,string,string
+object3,TestItem3,3,string,string,string,string,string,string

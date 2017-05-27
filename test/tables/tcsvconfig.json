@@ -5,6 +5,7 @@
             "objectOpen":"public class {objectName} {",
             "objectClose": "}",
             "objectProperty": "public {propertyType} {propertyName};",
+            "objectPropertyNameStyling": "snake_case",
             "typeMapping":{
                 "Any": "string",    
                 "String":"string",
@@ -18,6 +19,7 @@
             "objectOpen":"interface {objectName} {",
             "objectClose": "}",
             "objectProperty": "{propertyName} : {propertyType},",
+            "objectPropertyNameStyling": "camelCase",
             "typeMapping":{
                 "Any": "string",    
                 "String":"string",

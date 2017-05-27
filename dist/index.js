@@ -56,14 +56,24 @@ function genTable(filePath, outPath) {
         var parsedCSV = parse(data);
         var tableName = path.basename(filePath, '.csv');
         var headerRow = [];
+        var normalizedPropertyNames = [];
         var primaryColumnIndex = 0;
         parsedCSV[0].forEach(function (value, index) {
             var splitHeaderValue = value.split(':');
             headerRow.push({
-                propertyName: splitHeaderValue[0],
+                propertyName: normalizePropertyName(splitHeaderValue[0]),
                 propertyType: splitHeaderValue.length > 1 ? splitHeaderValue[1] : "Any",
                 specialKey: splitHeaderValue.length > 2 ? splitHeaderValue[2] : null,
             });
+            var normalizedPropertyName = normalizePropertyName(splitHeaderValue[0]);
+            console.log(JSON.stringify(normalizedPropertyName));
+            if (normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1) {
+                console.error("Exited before completion: " + tableName + "'s PropertyName(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate PropertyName found.");
+                return;
+            }
+            else {
+                normalizedPropertyNames.push(normalizedPropertyName.join(""));
+            }
             //Override default primary Column?
             if (headerRow[headerRow.length - 1].specialKey == "PrimaryKey") {
                 primaryColumnIndex = index;
@@ -72,15 +82,15 @@ function genTable(filePath, outPath) {
         var jsonified = {};
         for (var i = 1; i < parsedCSV.length; i++) {
             var entryRow = parsedCSV[i];
-            var pk = entryRow[primaryColumnIndex];
-            if (jsonified.hasOwnProperty(pk)) {
-                console.error("Exited before completion: " + tableName + "'s PrimiaryKey(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate key " + pk + " found on row " + (i + 1) + ".");
+            var primaryKeyValue = entryRow[primaryColumnIndex];
+            if (jsonified.hasOwnProperty(primaryKeyValue)) {
+                console.error("Exited before completion: " + tableName + "'s PrimiaryKey(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate key " + primaryKeyValue + " found on row " + (i + 1) + ".");
                 return;
             }
-            jsonified[pk] = {};
+            jsonified[primaryKeyValue] = {};
             for (var j = 0; j < headerRow.length; j++) {
                 var headerEntry = headerRow[j];
-                jsonified[pk][headerEntry.propertyName] = typeEntry(entryRow[j], headerEntry.propertyType);
+                jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
         }
         var generatedFiles = {};
@@ -97,7 +107,7 @@ function genTable(filePath, outPath) {
                 if (config.codeGenerators.hasOwnProperty(genId)) {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
                         .replace("{propertyType}", mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                        .replace("{propertyName}", name_1) + '\n';
+                        .replace("{propertyName}", mapPropertyName(name_1, codeGenerator.objectPropertyNameStyling)) + '\n';
                 }
             }
         }
@@ -117,6 +127,42 @@ function mapType(type, typeMapping, listType) {
         mappedType = mappedType.replace("{propertyType}", listType);
     }
     return mappedType.replace("{propertyType}", typeMapping[typeInfo.baseType]);
+}
+function normalizePropertyName(rawPropertyName) {
+    return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
+        .replace(/_/g, " ") //Then split out the underscore_spacing to underscore spacing
+        .split(" ") //then split on spaces
+        .map(function (entry) { return entry.toLocaleLowerCase(); }) //remove casing
+        .filter(function (entry) { return entry !== ""; }); //remove empty strings
+}
+function mapPropertyName(normalizedPropertyName, styling) {
+    switch (styling) {
+        case "CamelCase":
+            return normalizedPropertyName.map(function (word) { return captializeLetterAt(word, 0); }).join("");
+        case "camelCase":
+            return normalizedPropertyName[0] + normalizedPropertyName.slice(1).map(function (word) { return captializeLetterAt(word, 0); }).join("");
+        case "snake_case":
+            return normalizedPropertyName.join("_");
+        case "SCREAMING_SNAKE_CASE":
+            return normalizedPropertyName.map(function (word) { return word.toUpperCase(); }).join("_");
+        case "kebab-case":
+            return normalizedPropertyName.join("-");
+        case "Train-Case":
+            return normalizedPropertyName.map(function (word) { return captializeLetterAt(word, 0); }).join("-");
+        case "stUdLyCaPs":
+            return stUdLyCaPsiT(normalizedPropertyName.join(""));
+    }
+}
+function captializeLetterAt(targetString, targetIndex) {
+    return targetString.slice(0, targetIndex) + targetString.charAt(targetIndex).toUpperCase() + targetString.slice(targetIndex + 1);
+}
+function stUdLyCaPsiT(targetString) {
+    for (var i = 0; i < targetString.length; i++) {
+        if (Math.random() > .5) {
+            targetString = captializeLetterAt(targetString, i);
+        }
+    }
+    return targetString;
 }
 function typeEntry(val, type) {
     var typeInfo = getBaseTypeAndListLevels(type);
