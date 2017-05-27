@@ -1,4 +1,4 @@
-interface commaTest {
+interface CommaTest {
 	itemName : string,
 	health : number,
 	description : string,

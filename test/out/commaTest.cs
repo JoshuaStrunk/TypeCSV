@@ -1,10 +1,18 @@
-public class commaTest {
-	public string itemName;
-	public int health;
-	public string description;
-	public float lootChance;
-	public int[] testIntList;
-	public string[] testStringList;
-	public int[][] testIntMatrix;
-	public string[][] testStringMatrix;
+public class CommaTest {
+	{propertyDescription}
+ public string itemName;
+	{propertyDescription}
+ public int health;
+	{propertyDescription}
+ public string description;
+	{propertyDescription}
+ public float lootChance;
+	{propertyDescription}
+ public int[] testIntList;
+	{propertyDescription}
+ public string[] testStringList;
+	{propertyDescription}
+ public int[][] testIntMatrix;
+	{propertyDescription}
+ public string[][] testStringMatrix;
 }

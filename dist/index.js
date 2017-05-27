@@ -55,6 +55,8 @@ function genTable(filePath, outPath) {
         }
         var parsedCSV = parse(data);
         var tableName = path.basename(filePath, '.csv');
+        var normalizedTableName = normalizeTextName(tableName);
+        //TODO: might really need to to a check for conflicting normalized table names
         var headerRow = [];
         var normalizedPropertyNames = [];
         var primaryColumnIndex = 0;
@@ -78,7 +80,7 @@ function genTable(filePath, outPath) {
                     if (splitHeaderValue.length > cellSplitIndex) {
                         switch (selectedTableFormat.headerMapping[rowIndex][cellSplitIndex]) {
                             case "PropertyName":
-                                headerRow[columnIndex].propertyName = normalizePropertyName(splitHeaderValue[cellSplitIndex]);
+                                headerRow[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
                                 break;
                             case "PropertyType":
                                 headerRow[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
@@ -136,7 +138,8 @@ function genTable(filePath, outPath) {
         var generatedFiles = {};
         for (var genId in config.codeGenerators) {
             if (config.codeGenerators.hasOwnProperty(genId)) {
-                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", tableName) + '\n';
+                var codeGenerator = config.codeGenerators[genId];
+                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", mapPropertyName(normalizedTableName, codeGenerator.objectNameStyling)) + '\n';
             }
         }
         for (var i = 0; i < headerRow.length; i++) {
@@ -168,7 +171,7 @@ function mapType(type, typeMapping, listType) {
     }
     return mappedType.replace("{propertyType}", typeMapping[typeInfo.baseType]);
 }
-function normalizePropertyName(rawPropertyName) {
+function normalizeTextName(rawPropertyName) {
     return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
         .replace(/_/g, " ") //Then split out the underscore_spacing to underscore spacing
         .split(" ") //then split on spaces

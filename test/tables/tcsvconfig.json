@@ -1,5 +1,11 @@
 {
     "tableFormats": {
+        "TestObject": {
+            "headerMapping": [
+                ["PropertyName", "PropertyType", "SpecialModifer"],
+                ["PropertyDescription"]
+            ]
+        }
     },
     "defaultTableFormat": {
         "headerMapping": [
@@ -9,6 +15,7 @@
     "codeGenerators" : {
         "csharp": {
             "ext":".cs",
+            "objectNameStyling": "CamelCase",
             "objectOpen":"public class {objectName} {",
             "objectClose": "}",
             "objectProperty": "public {propertyType} {propertyName};",
@@ -23,6 +30,7 @@
         },
         "typescript":{
             "ext":".d.ts",
+            "objectNameStyling": "CamelCase",
             "objectOpen":"interface {objectName} {",
             "objectClose": "}",
             "objectProperty": "{propertyName} : {propertyType},",

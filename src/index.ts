@@ -70,6 +70,8 @@ function genTable(filePath:string, outPath:string) {
 
         let parsedCSV : string[][] = parse(data);
         let tableName  = path.basename(filePath, '.csv');
+        let normalizedTableName = normalizeTextName(tableName);
+        //TODO: might really need to to a check for conflicting normalized table names
 
         let headerRow:HeaderRowEntry[] = [];
 
@@ -105,7 +107,7 @@ function genTable(filePath:string, outPath:string) {
                         switch(selectedTableFormat.headerMapping[rowIndex][cellSplitIndex])
                         {
                             case "PropertyName":
-                                headerRow[columnIndex].propertyName = normalizePropertyName(splitHeaderValue[cellSplitIndex]);
+                                headerRow[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
                                 break;
 
                             case "PropertyType":
@@ -180,7 +182,8 @@ function genTable(filePath:string, outPath:string) {
         for(let genId in config.codeGenerators) {
             if(config.codeGenerators.hasOwnProperty(genId))
             {
-                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", tableName)+'\n';
+                let codeGenerator = config.codeGenerators[genId];
+                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}",  mapPropertyName(normalizedTableName, codeGenerator.objectNameStyling))+'\n';
             }
         }
 
@@ -224,7 +227,7 @@ function mapType(type:string, typeMapping:TypeMapping, listType:string) :string
     
 }
 
-function normalizePropertyName(rawPropertyName:string):string[]
+function normalizeTextName(rawPropertyName:string):string[]
 {
     return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
     .replace(/_/g, " ")//Then split out the underscore_spacing to underscore spacing
@@ -345,6 +348,7 @@ interface tscvConfigEntry {
 
 interface ConfigCodeGeneratorEntry {
     ext:string;
+    objectNameStyling:CaseStyling;
     objectOpen:string;
     objectClose:string;
     objectProperty:string;

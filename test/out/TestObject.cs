@@ -1,11 +1,20 @@
 public class TestObject {
-	public string objectName;
-	public string simpleString;
-	public int simpleInt;
-	public string simCardTest;
-	public string testingThisOut;
-	public string testTest;
-	public string tesTEst;
-	public string brokenPromises;
-	public string undErsCoreTest;
+	{propertyDescription}
+ public string objectName;
+	{propertyDescription}
+ public string simpleString;
+	{propertyDescription}
+ public int simpleInt;
+	{propertyDescription}
+ public string simCardTest;
+	{propertyDescription}
+ public string testingThisOut;
+	{propertyDescription}
+ public string testTest;
+	{propertyDescription}
+ public string tesTEst;
+	{propertyDescription}
+ public string brokenPromises;
+	{propertyDescription}
+ public string undErsCoreTest;
 }
