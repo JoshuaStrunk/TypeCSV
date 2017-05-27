@@ -18,7 +18,7 @@
             "objectNameStyling": "CamelCase",
             "objectOpen":"public class {objectName} {",
             "objectClose": "}",
-            "objectProperty": "public {propertyType} {propertyName};",
+            "objectProperty": "/// <summary>{propertyDescription}\npublic {propertyType} {propertyName};",
             "objectPropertyNameStyling": "camelCase",
             "typeMapping":{
                 "Any": "string",    
@@ -33,7 +33,7 @@
             "objectNameStyling": "CamelCase",
             "objectOpen":"interface {objectName} {",
             "objectClose": "}",
-            "objectProperty": "{propertyName} : {propertyType},",
+            "objectProperty": "//* {propertyDescription} */\n{propertyName} : {propertyType},",
             "objectPropertyNameStyling": "camelCase",
             "typeMapping":{
                 "Any": "string",    

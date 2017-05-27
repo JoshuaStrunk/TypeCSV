@@ -141,6 +141,10 @@ function genTable(filePath:string, outPath:string) {
             {
                 headerRow[index].propertyType = "Any";
             }
+            if(headerRowEntry.propertyDescription == null)
+            {
+                headerRow[index].propertyDescription = "";                
+            }
 
             let normalizedPropertyName = headerRowEntry.propertyName;
             if(normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1  )
@@ -163,7 +167,7 @@ function genTable(filePath:string, outPath:string) {
 
 
         let jsonified:{[primaryKey:string] : any} = {};
-        for(let i =1; i<parsedCSV.length; i++) {
+        for(let i = selectedTableFormat.headerMapping.length; i<parsedCSV.length; i++) {
             let entryRow = parsedCSV[i];
             let primaryKeyValue = entryRow[primaryColumnIndex];
             if(jsonified.hasOwnProperty(primaryKeyValue)) {
@@ -175,6 +179,11 @@ function genTable(filePath:string, outPath:string) {
                 let headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
+            fs.writeFile(
+                    path.join(outPath, `${tableName}.json`), 
+                    JSON.stringify(jsonified), 
+                    (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+                );
         }
 
         let generatedFiles: {[key:string]: string} = {}
@@ -190,6 +199,7 @@ function genTable(filePath:string, outPath:string) {
         for(let i=0; i<headerRow.length;i++) {
             let type = headerRow[i].propertyType;
             let name = headerRow[i].propertyName;
+            let description = headerRow[i].propertyDescription;
 
             for(let genId in config.codeGenerators) {
                 let codeGenerator = config.codeGenerators[genId];
@@ -197,7 +207,9 @@ function genTable(filePath:string, outPath:string) {
                 {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
                         .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                        .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling)) + '\n';
+                        .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling))
+                        .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
+                        '\n';
                 }
             }
         }

@@ -108,6 +108,9 @@ function genTable(filePath, outPath) {
             if (headerRowEntry.propertyType == null) {
                 headerRow[index].propertyType = "Any";
             }
+            if (headerRowEntry.propertyDescription == null) {
+                headerRow[index].propertyDescription = "";
+            }
             var normalizedPropertyName = headerRowEntry.propertyName;
             if (normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1) {
                 console.error("Exited before completion: " + tableName + "'s PropertyName(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate PropertyName found.");
@@ -122,7 +125,7 @@ function genTable(filePath, outPath) {
             }
         });
         var jsonified = {};
-        for (var i = 1; i < parsedCSV.length; i++) {
+        for (var i = selectedTableFormat.headerMapping.length; i < parsedCSV.length; i++) {
             var entryRow = parsedCSV[i];
             var primaryKeyValue = entryRow[primaryColumnIndex];
             if (jsonified.hasOwnProperty(primaryKeyValue)) {
@@ -134,6 +137,8 @@ function genTable(filePath, outPath) {
                 var headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
+            fs.writeFile(path.join(outPath, tableName + ".json"), JSON.stringify(jsonified), function (err) { if (err !== null)
+                console.error(JSON.stringify(err)); });
         }
         var generatedFiles = {};
         for (var genId in config.codeGenerators) {
@@ -145,12 +150,15 @@ function genTable(filePath, outPath) {
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_1 = headerRow[i].propertyName;
+            var description = headerRow[i].propertyDescription;
             for (var genId in config.codeGenerators) {
                 var codeGenerator = config.codeGenerators[genId];
                 if (config.codeGenerators.hasOwnProperty(genId)) {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
                         .replace("{propertyType}", mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                        .replace("{propertyName}", mapPropertyName(name_1, codeGenerator.objectPropertyNameStyling)) + '\n';
+                        .replace("{propertyName}", mapPropertyName(name_1, codeGenerator.objectPropertyNameStyling))
+                        .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
+                        '\n';
                 }
             }
         }

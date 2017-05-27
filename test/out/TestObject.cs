@@ -1,20 +1,20 @@
 public class TestObject {
-	{propertyDescription}
- public string objectName;
-	{propertyDescription}
- public string simpleString;
-	{propertyDescription}
- public int simpleInt;
-	{propertyDescription}
- public string simCardTest;
-	{propertyDescription}
- public string testingThisOut;
-	{propertyDescription}
- public string testTest;
-	{propertyDescription}
- public string tesTEst;
-	{propertyDescription}
- public string brokenPromises;
-	{propertyDescription}
- public string undErsCoreTest;
+	/// <summary>Testing out the ability to write a comment / description about what a property is.
+	public string objectName;
+	/// <summary>Testing out the ability to write a comment / description about what a property is.
+	public string simpleString;
+	/// <summary>a
+	public int simpleInt;
+	/// <summary>b
+	public string simCardTest;
+	/// <summary>c
+	public string testingThisOut;
+	/// <summary>d
+	public string testTest;
+	/// <summary>f
+	public string tesTEst;
+	/// <summary>j
+	public string brokenPromises;
+	/// <summary>k
+	public string undErsCoreTest;
 }
