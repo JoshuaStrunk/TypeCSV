@@ -1,11 +1,18 @@
 {
+    "tableFormats": {
+    },
+    "defaultTableFormat": {
+        "headerMapping": [
+                ["PropertyName", "PropertyType", "SpecialModifer"]
+            ]
+    },
     "codeGenerators" : {
         "csharp": {
             "ext":".cs",
             "objectOpen":"public class {objectName} {",
             "objectClose": "}",
             "objectProperty": "public {propertyType} {propertyName};",
-            "objectPropertyNameStyling": "snake_case",
+            "objectPropertyNameStyling": "camelCase",
             "typeMapping":{
                 "Any": "string",    
                 "String":"string",

@@ -58,15 +58,55 @@ function genTable(filePath, outPath) {
         var headerRow = [];
         var normalizedPropertyNames = [];
         var primaryColumnIndex = 0;
-        parsedCSV[0].forEach(function (value, index) {
-            var splitHeaderValue = value.split(':');
+        var selectedTableFormat = config.tableFormats.hasOwnProperty(tableName) ? config.tableFormats[tableName] : config.defaultTableFormat;
+        if (selectedTableFormat == null) {
+            console.error("Failed to find table format for " + tableName + " and no default table format provided");
+            return;
+        }
+        for (var i = 0; i < parsedCSV[0].length; i++) {
             headerRow.push({
-                propertyName: normalizePropertyName(splitHeaderValue[0]),
-                propertyType: splitHeaderValue.length > 1 ? splitHeaderValue[1] : "Any",
-                specialKey: splitHeaderValue.length > 2 ? splitHeaderValue[2] : null,
+                propertyName: null,
+                propertyType: null,
+                propertyDescription: null,
+                specialKey: null,
             });
-            var normalizedPropertyName = normalizePropertyName(splitHeaderValue[0]);
-            console.log(JSON.stringify(normalizedPropertyName));
+        }
+        var _loop_1 = function (rowIndex) {
+            parsedCSV[rowIndex].forEach(function (value, columnIndex) {
+                var splitHeaderValue = value.split(':');
+                for (var cellSplitIndex = 0; cellSplitIndex < selectedTableFormat.headerMapping[rowIndex].length; cellSplitIndex++) {
+                    if (splitHeaderValue.length > cellSplitIndex) {
+                        switch (selectedTableFormat.headerMapping[rowIndex][cellSplitIndex]) {
+                            case "PropertyName":
+                                headerRow[columnIndex].propertyName = normalizePropertyName(splitHeaderValue[cellSplitIndex]);
+                                break;
+                            case "PropertyType":
+                                headerRow[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
+                                break;
+                            case "PropertyDescription":
+                                headerRow[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
+                                break;
+                            case "SpecialModifer":
+                                headerRow[columnIndex].specialKey = splitHeaderValue[cellSplitIndex];
+                                break;
+                        }
+                    }
+                }
+            });
+        };
+        for (var rowIndex = 0; rowIndex < selectedTableFormat.headerMapping.length; rowIndex++) {
+            _loop_1(rowIndex);
+        }
+        //Validate header row info
+        headerRow.forEach(function (headerRowEntry, index) {
+            if (headerRowEntry.propertyName == null) {
+                console.error("Exited before completion: " + tableName + "'s column " + index + " does not have a valid property name");
+                return;
+            }
+            if (headerRowEntry.propertyType == null) {
+                headerRow[index].propertyType = "Any";
+            }
+            var normalizedPropertyName = headerRowEntry.propertyName;
             if (normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1) {
                 console.error("Exited before completion: " + tableName + "'s PropertyName(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate PropertyName found.");
                 return;
@@ -75,7 +115,7 @@ function genTable(filePath, outPath) {
                 normalizedPropertyNames.push(normalizedPropertyName.join(""));
             }
             //Override default primary Column?
-            if (headerRow[headerRow.length - 1].specialKey == "PrimaryKey") {
+            if (headerRowEntry.specialKey == "PrimaryKey") {
                 primaryColumnIndex = index;
             }
         });

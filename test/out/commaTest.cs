@@ -1,10 +1,10 @@
 public class commaTest {
-	public string item_name;
+	public string itemName;
 	public int health;
 	public string description;
-	public float loot_chance;
-	public int[] test_int_list;
-	public string[] test_string_list;
-	public int[][] test_int_matrix;
-	public string[][] test_string_matrix;
+	public float lootChance;
+	public int[] testIntList;
+	public string[] testStringList;
+	public int[][] testIntMatrix;
+	public string[][] testStringMatrix;
 }

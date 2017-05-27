@@ -77,18 +77,70 @@ function genTable(filePath:string, outPath:string) {
 
         let primaryColumnIndex = 0;
 
-        parsedCSV[0].forEach((value, index) => {
+        let selectedTableFormat = config.tableFormats.hasOwnProperty(tableName) ? config.tableFormats[tableName] : config.defaultTableFormat;
+        if(selectedTableFormat == null)
+        {
+            console.error(`Failed to find table format for ${tableName} and no default table format provided`);
+            return;
+        }
 
-
-            let splitHeaderValue = value.split(':');
+        for(let i=0; i<parsedCSV[0].length; i++)
+        {
             headerRow.push({
-                propertyName:   normalizePropertyName(splitHeaderValue[0]),
-                propertyType:   splitHeaderValue.length > 1 ? splitHeaderValue[1]: "Any",
-                specialKey:     splitHeaderValue.length > 2 ? splitHeaderValue[2]: null,
-            });
+                propertyName: null,
+                propertyType: null,
+                propertyDescription: null,
+                specialKey: null,
+            })
+        }
 
-            let normalizedPropertyName = normalizePropertyName(splitHeaderValue[0]);
-            console.log(JSON.stringify(normalizedPropertyName));
+        for(let rowIndex=0; rowIndex<selectedTableFormat.headerMapping.length; rowIndex++)
+        {
+            parsedCSV[rowIndex].forEach((value, columnIndex) => {
+                let splitHeaderValue = value.split(':');
+                for(let cellSplitIndex=0; cellSplitIndex< selectedTableFormat.headerMapping[rowIndex].length; cellSplitIndex++)
+                {
+                    if(splitHeaderValue.length > cellSplitIndex)
+                    {
+                        switch(selectedTableFormat.headerMapping[rowIndex][cellSplitIndex])
+                        {
+                            case "PropertyName":
+                                headerRow[columnIndex].propertyName = normalizePropertyName(splitHeaderValue[cellSplitIndex]);
+                                break;
+
+                            case "PropertyType":
+                                headerRow[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                            case "PropertyDescription":
+                                headerRow[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                            case "SpecialModifer":
+                                headerRow[columnIndex].specialKey = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                        }
+                    }
+                }
+            });
+        }
+        //Validate header row info
+
+        headerRow.forEach((headerRowEntry, index) => {
+
+            if(headerRowEntry.propertyName == null)
+            {
+                console.error(`Exited before completion: ${tableName}'s column ${index} does not have a valid property name`);
+                return;
+            }
+
+            if(headerRowEntry.propertyType == null)
+            {
+                headerRow[index].propertyType = "Any";
+            }
+
+            let normalizedPropertyName = headerRowEntry.propertyName;
             if(normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1  )
             {
                 console.error(`Exited before completion: ${tableName}'s PropertyName(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate PropertyName found.`);
@@ -100,7 +152,7 @@ function genTable(filePath:string, outPath:string) {
             }
 
             //Override default primary Column?
-            if(headerRow[headerRow.length-1].specialKey == "PrimaryKey") {
+            if(headerRowEntry.specialKey == "PrimaryKey") {
                 primaryColumnIndex = index;
             }
 
@@ -182,6 +234,8 @@ function normalizePropertyName(rawPropertyName:string):string[]
 }
 
 type CaseStyling = "CamelCase" | "camelCase" | "snake_case" | "SCREAMING_SNAKE_CASE" | "kebab-case" | "Train-Case" | "stUdLyCaPs";
+
+type PropertyKeywords = "PropertyName" | "PropertyType" | "PropertyDescription" | "SpecialModifer";
 
 function mapPropertyName(normalizedPropertyName:string[], styling:CaseStyling):string
 {
@@ -284,29 +338,36 @@ function typeValue(val:string, baseType:string, listLevels:number) {
 
 
 interface tscvConfigEntry {
-    codeGenerators: {[key:string]: configCodeGeneratorEntry}
+    codeGenerators: {[generatorName:string]: ConfigCodeGeneratorEntry};
+    tableFormats: {[tableName:string]: ConfigTableFormatEntry};
+    defaultTableFormat: ConfigTableFormatEntry;
 }
 
-interface configCodeGeneratorEntry {
-    ext:string,
-    objectOpen:string,
-    objectClose:string,
-    objectProperty:string,
-    objectPropertyNameStyling:CaseStyling,
-    typeMapping: TypeMapping,
-    listType:string
+interface ConfigCodeGeneratorEntry {
+    ext:string;
+    objectOpen:string;
+    objectClose:string;
+    objectProperty:string;
+    objectPropertyNameStyling:CaseStyling;
+    typeMapping: TypeMapping;
+    listType:string;
+}
+
+interface ConfigTableFormatEntry {
+    headerMapping:PropertyKeywords[][];
 }
 
 interface TypeMapping {
-    Any: string,
-    String: string,
-    Int: string,
-    Float: string,
+    Any: string;
+    String: string;
+    Int: string;
+    Float: string;
 }
 
 interface HeaderRowEntry
 { 
-    propertyName:string[], 
-    propertyType:string, 
-    specialKey:string 
+    propertyName:string[]; 
+    propertyType:string;
+    propertyDescription:string;
+    specialKey:string;
 }
