@@ -5,6 +5,12 @@
                 ["PropertyName", "PropertyType", "SpecialModifer"],
                 ["PropertyDescription"]
             ]
+        },
+        "StatSets": {
+            "headerMapping": [ 
+                ["PropertyName", "PropertyType", "SpecialModifer"],
+                ["PropertyDescription"]
+            ]
         }
     },
     "defaultTableFormat": {
@@ -33,7 +39,7 @@
             "objectNameStyling": "CamelCase",
             "objectOpen":"interface {objectName} {",
             "objectClose": "}",
-            "objectProperty": "//* {propertyDescription} */\n{propertyName} : {propertyType},",
+            "objectProperty": "/** {propertyDescription} */\n{propertyName} : {propertyType},",
             "objectPropertyNameStyling": "camelCase",
             "typeMapping":{
                 "Any": "string",    

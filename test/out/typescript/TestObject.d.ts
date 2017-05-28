@@ -1,20 +1,20 @@
 interface TestObject {
-	//* Testing out the ability to write a comment / description about what a property is. */
+	/** Testing out the ability to write a comment / description about what a property is. */
 	objectName : string,
-	//* Testing out the ability to write a comment / description about what a property is. */
+	/** Testing out the ability to write a comment / description about what a property is. */
 	simpleString : string,
-	//* a */
+	/** a */
 	simpleInt : number,
-	//* b */
+	/** b */
 	simCardTest : string,
-	//* c */
+	/** c */
 	testingThisOut : string,
-	//* d */
+	/** d */
 	testTest : string,
-	//* f */
+	/** f */
 	tesTEst : string,
-	//* j */
+	/** j */
 	brokenPromises : string,
-	//* k */
+	/** k */
 	undErsCoreTest : string,
 }

@@ -4,7 +4,41 @@ import * as fs from "fs";
 import * as parse from "csv-parse/lib/sync";
 
 
-let config :tscvConfigEntry = null;
+let config : tscvConfigEntry = null;
+
+let tableDataLookup : {[key:string]: CollectedTableData} = {};
+let typedTables : {[key:string]:{[primaryKey:string] : any}} = {};
+
+let validTypes = {
+    "Any":        (val:string) => val,
+    "String":     (val:string) => val,
+
+    "Int":        (val:string) => {
+        let parsedInt = parseInt(val);
+        if(parsedInt !== NaN && parsedInt === parseFloat(val))
+        {
+            return parsedInt;
+        }
+        else 
+        {
+            console.error(`Attempt to convert ${val} to int failed`);
+            return null;
+        }
+    },
+    "Float":      (val:string) => {
+        let parsedFloat = parseFloat(val);
+        if(parsedFloat !== NaN)
+        {
+            return parsedFloat;
+        }
+        else 
+        {
+            console.error(`Attempt to convert ${val} to float failed`);
+            return null;
+        }
+    }
+};
+
 
 (function() {
 
@@ -29,15 +63,49 @@ let config :tscvConfigEntry = null;
         config = JSON.parse(fs.readFileSync(path.join(pathToData, configFile[0]),"utf8" ));
 
 
+        //prelim data colleciton
         for(let i=0; i<test.length; i++) 
         {
             let fileName = test[i];
 
             if(path.extname(fileName) === ".csv")
             {
-                genTable(path.join(pathToData, fileName), pathToOutDir);
+                let fileName = test[i];
+                let tableName = path.basename(fileName, ".csv");
+                let tableData = gatherTableData(path.join(pathToData, fileName));
+                if(tableData != null)
+                {
+                    tableDataLookup[tableName] = tableData;
+                }
             }
         }
+
+        //adding reference type validators
+        for(let tableName in tableDataLookup)
+        {
+            validTypes[tableName] = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
+        }
+        for(let validTypeName in validTypes) {
+            console.log(validTypeName);
+        }
+
+        //typing pass
+        for(let tableName in tableDataLookup)
+        {
+            
+            let typingPass = typeTable(tableDataLookup[tableName]);
+            if(typingPass != null)
+            {
+                typedTables[tableName] = typingPass;
+            }
+        }
+
+        //Output pass
+        for(let tableName in tableDataLookup)
+        {
+            outputTable(tableDataLookup[tableName], typedTables[tableName], pathToOutDir);
+        }
+
     }
     catch(e) 
     {
@@ -62,7 +130,227 @@ function tryMakeDir(path:string)
 }
 
 
-function genTable(filePath:string, pathToOutDir:string) {
+function gatherTableData(filePath:string):CollectedTableData
+{
+    try 
+    {
+        let data = fs.readFileSync(filePath, 'utf8');
+        let parsedCSV : string[][] = parse(data);
+        let tableName  = path.basename(filePath, '.csv');
+        let normalizedTableName = normalizeTextName(tableName);
+
+
+        let headerRow:HeaderRowEntry[] = [];
+        let normalizedPropertyNames:string[] = [];
+        let primaryColumnIndex = 0;
+
+        let selectedTableFormat = config.tableFormats.hasOwnProperty(tableName) ? config.tableFormats[tableName] : config.defaultTableFormat;
+        if(selectedTableFormat == null)
+        {
+            console.error(`Failed to find table format for ${tableName} and no default table format provided`);
+            return;
+        }
+
+        for(let i=0; i<parsedCSV[0].length; i++)
+        {
+            headerRow.push({
+                propertyName: null,
+                propertyType: null,
+                propertyDescription: null,
+                specialKey: null,
+            })
+        }
+
+        for(let rowIndex=0; rowIndex<selectedTableFormat.headerMapping.length; rowIndex++)
+        {
+            parsedCSV[rowIndex].forEach((value, columnIndex) => {
+                let splitHeaderValue = value.split(':');
+                for(let cellSplitIndex=0; cellSplitIndex< selectedTableFormat.headerMapping[rowIndex].length; cellSplitIndex++)
+                {
+                    if(splitHeaderValue.length > cellSplitIndex)
+                    {
+                        switch(selectedTableFormat.headerMapping[rowIndex][cellSplitIndex])
+                        {
+                            case "PropertyName":
+                                headerRow[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
+                                break;
+
+                            case "PropertyType":
+                                headerRow[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                            case "PropertyDescription":
+                                headerRow[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                            case "SpecialModifer":
+                                headerRow[columnIndex].specialKey = splitHeaderValue[cellSplitIndex];
+                                break;
+
+                        }
+                    }
+                }
+            });
+            }
+            //Validate header row info
+            headerRow.forEach((headerRowEntry, index) => {
+
+            if(headerRowEntry.propertyName == null)
+            {
+                console.error(`Exited before completion: ${tableName}'s column ${index} does not have a valid property name`);
+                return;
+            }
+
+            if(headerRowEntry.propertyType == null)
+            {
+                headerRow[index].propertyType = "Any";
+            }
+            if(headerRowEntry.propertyDescription == null)
+            {
+                headerRow[index].propertyDescription = "";                
+            }
+
+            let normalizedPropertyName = headerRowEntry.propertyName;
+            if(normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1  )
+            {
+                console.error(`Exited before completion: ${tableName}'s PropertyName(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate PropertyName found.`);
+                return;
+            }
+            else
+            {
+                normalizedPropertyNames.push(normalizedPropertyName.join(""));
+            }
+
+            //Override default primary Column?
+            if(headerRowEntry.specialKey == "PrimaryKey") {
+                primaryColumnIndex = index;
+            }
+        });
+        return {
+            parsedCSV: parsedCSV,
+            tableName: tableName,
+            headerRow: headerRow,
+            tableFormat: selectedTableFormat,
+            normalizedPropertyNames: normalizedPropertyNames,
+            primaryColumnIndex: primaryColumnIndex,
+        };
+    } 
+    catch(err)
+    {
+        if(err != null) {
+            switch(err.code) {
+                case "ENOENT": console.log(`File ${process.argv[2]} does not exist`); break;
+                default: console.log(JSON.stringify(err)); break;
+            }
+            return null;
+        }
+    }
+}
+
+function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) : (str:string) => string
+{
+    return str => {
+        for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+        {
+            if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
+            {
+                return str;
+            }
+        }
+        //TODO: need better information here likely will need to pass more context into typing functions
+        console.error(`Failed to validate ${str} as a reference type`);
+        return null;
+    };
+}
+
+function typeTable(tableData:CollectedTableData):{[primaryKey:string] : any}
+{
+
+    const headerMapping = tableData.tableFormat.headerMapping;
+    const parsedCSV = tableData.parsedCSV;
+    const primaryColumnIndex = tableData.primaryColumnIndex;
+    const tableName = tableData.tableName;
+    const headerRow = tableData.headerRow;
+
+    let typedTableData:{[primaryKey:string] : any} = {};
+    for(let i = headerMapping.length; i<parsedCSV.length; i++) {
+        let entryRow = parsedCSV[i];
+        let primaryKeyValue = entryRow[primaryColumnIndex];
+
+        //Confirm integrity of primary key
+        if(typedTableData.hasOwnProperty(primaryKeyValue)) {
+            console.error(`Exited before completion: ${tableName}'s PrimiaryKey(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate key ${primaryKeyValue} found on row ${i+1}.`);
+            return;
+        }
+
+        typedTableData[primaryKeyValue] = {};
+        for(let j=0; j<headerRow.length; j++) {
+            let headerEntry = headerRow[j];
+            typedTableData[primaryKeyValue][mapPropertyName(headerEntry.propertyName, "CamelCase")] = typeEntry(entryRow[j], headerEntry.propertyType);
+        }
+    }
+
+    return null;
+}
+
+function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:string] : any}, pathToOutDir:string)
+{
+    const headerRow = tableData.headerRow;
+    const tableName = tableData.tableName;
+    const normalizedTableName = normalizeTextName(tableData.tableName);
+
+    let generatedFiles: {[key:string]: string} = {}
+
+    for(let genId in config.codeGenerators) {
+        if(config.codeGenerators.hasOwnProperty(genId))
+        {
+            let codeGenerator = config.codeGenerators[genId];
+            generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}",  mapPropertyName(normalizedTableName, codeGenerator.objectNameStyling))+'\n';
+        }
+    }
+
+    for(let i=0; i<headerRow.length;i++) {
+        let type = headerRow[i].propertyType;
+        let name = headerRow[i].propertyName;
+        let description = headerRow[i].propertyDescription;
+
+        for(let genId in config.codeGenerators) {
+            let codeGenerator = config.codeGenerators[genId];
+            if(config.codeGenerators.hasOwnProperty(genId))
+            {
+                generatedFiles[genId] += '\t' + codeGenerator.objectProperty
+                    .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
+                    .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling))
+                    .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
+                    '\n';
+            }
+        }
+    }
+    for(let genId in config.codeGenerators) {
+        if(config.codeGenerators.hasOwnProperty(genId))
+        {
+            generatedFiles[genId] += config.codeGenerators[genId].objectClose+'\n';
+            let generatedCodeOutDir = path.join(pathToOutDir, genId);
+            tryMakeDir(generatedCodeOutDir);
+                fs.writeFile(
+                path.join(generatedCodeOutDir, `${tableName}{ext}`.replace("{ext}", config.codeGenerators[genId].ext)), 
+                generatedFiles[genId], 
+                (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+            );
+        }
+    }
+}
+
+
+// let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+// tryMakeDir(jsonifedTablesOutDir);
+// fs.writeFile(
+//         path.join(jsonifedTablesOutDir, `${tableName}.json`), 
+//         JSON.stringify(jsonified, null, "\t"), 
+//         (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+//     );
+function genTable(filePath:string, pathToOutDir:string) 
+{
      fs.readFile(filePath, 'utf8', (err, data) => {
 
         if(err != null) {
@@ -133,7 +421,6 @@ function genTable(filePath:string, pathToOutDir:string) {
             });
         }
         //Validate header row info
-
         headerRow.forEach((headerRowEntry, index) => {
 
             if(headerRowEntry.propertyName == null)
@@ -184,13 +471,13 @@ function genTable(filePath:string, pathToOutDir:string) {
                 let headerEntry = headerRow[j];
                 jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
             }
-            let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
-            tryMakeDir(jsonifedTablesOutDir);
-            fs.writeFile(
-                    path.join(jsonifedTablesOutDir, `${tableName}.json`), 
-                    JSON.stringify(jsonified, null, "\t"), 
-                    (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-                );
+            // let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+            // tryMakeDir(jsonifedTablesOutDir);
+            // fs.writeFile(
+            //         path.join(jsonifedTablesOutDir, `${tableName}.json`), 
+            //         JSON.stringify(jsonified, null, "\t"), 
+            //         (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+            //     );
         }
 
         let generatedFiles: {[key:string]: string} = {}
@@ -308,44 +595,14 @@ function stUdLyCaPsiT(targetString:string):string
 
 
 
-function typeEntry(val:string, type:string) {
-
+function typeEntry(val:string, type:string)
+{
     let typeInfo = getBaseTypeAndListLevels(type);
     return typeValue(val, typeInfo.baseType, typeInfo.listLevels);
 }
 
-
-let validTypes = {
-    "Any":        (val:string) => val,
-    "String":     (val:string) => val,
-
-    "Int":        (val:string) => {
-        let parsedInt = parseInt(val);
-        if(parsedInt !== NaN && parsedInt === parseFloat(val))
-        {
-            return parsedInt;
-        }
-        else 
-        {
-            console.error(`Attempt to convert ${val} to int failed`);
-            return null;
-        }
-    },
-    "Float":      (val:string) => {
-        let parsedFloat = parseFloat(val);
-        if(parsedFloat !== NaN)
-        {
-            return parsedFloat;
-        }
-        else 
-        {
-            console.error(`Attempt to convert ${val} to float failed`);
-            return null;
-        }
-    }
-};
-
-function getBaseTypeAndListLevels(val:string) {
+function getBaseTypeAndListLevels(val:string)
+{
     let i=0;
     for(;val.slice(val.length-2) === "[]"; i++, val= val.slice(0,val.length-2)) { }
    
@@ -355,19 +612,32 @@ function getBaseTypeAndListLevels(val:string) {
     };
 }
 
-function typeValue(val:string, baseType:string, listLevels:number) {
-    if(listLevels < 1) return validTypes[baseType](val);
+function typeValue(val:string, baseType:string, listLevels:number)
+{
+    if(listLevels < 1)
+    {
+        if(validTypes.hasOwnProperty(baseType))
+        {
+            return validTypes[baseType](val);
+        }
+        else 
+        {
+             console.error(`Could not find method to process value of type ${baseType}`);
+        }
+    }
     else return parse(val)[0].map((innerVal) => typeValue(innerVal, baseType, listLevels-1));
 }
 
 
-interface tscvConfigEntry {
+interface tscvConfigEntry
+{
     codeGenerators: {[generatorName:string]: ConfigCodeGeneratorEntry};
     tableFormats: {[tableName:string]: ConfigTableFormatEntry};
     defaultTableFormat: ConfigTableFormatEntry;
 }
 
-interface ConfigCodeGeneratorEntry {
+interface ConfigCodeGeneratorEntry
+{
     ext:string;
     objectNameStyling:CaseStyling;
     objectOpen:string;
@@ -378,11 +648,13 @@ interface ConfigCodeGeneratorEntry {
     listType:string;
 }
 
-interface ConfigTableFormatEntry {
+interface ConfigTableFormatEntry
+{
     headerMapping:PropertyKeywords[][];
 }
 
-interface TypeMapping {
+interface TypeMapping
+{
     Any: string;
     String: string;
     Int: string;
@@ -395,4 +667,25 @@ interface HeaderRowEntry
     propertyType:string;
     propertyDescription:string;
     specialKey:string;
+}
+
+interface TableData
+{
+    parsedCSV : string[][];
+    tableName:string;
+    normalizedTableName:string[];
+    headerRow:HeaderRowEntry[];
+    normalizedPropertyNames:string[];
+    primaryColumnIndex:number;
+    typedTable: any[][];
+}
+
+interface CollectedTableData
+{
+    parsedCSV:string[][],
+    tableName:string;
+    tableFormat:ConfigTableFormatEntry;
+    headerRow:HeaderRowEntry[];
+    normalizedPropertyNames:string[];
+    primaryColumnIndex:number;
 }

@@ -1,0 +1,5 @@
+StatSetId:String:PrimaryKey,health:Int,attack:Int,armor:Int
+Unquie identifer for a a set of stats.,Determines the amount of a hits a unit could take before perishing.,"Determines how hard a unit hits, will be reduced by the attacked units armor.",Determines how much damage is mitigated in an attack on this unit.
+weakSet,2,1,2
+standardSet,5,6,4
+strongSet,7,8,5
