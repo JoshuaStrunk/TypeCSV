@@ -530,7 +530,8 @@ function mapType(type:string, typeMapping:TypeMapping, listType:string) :string
     for(let i=0; i<typeInfo.listLevels; i++) {
         mappedType = mappedType.replace("{propertyType}", listType);
     }
-    return mappedType.replace("{propertyType}", typeMapping[typeInfo.baseType]);
+    //TODO: consider fixing up TypeMapping to be more consistent
+    return mappedType.replace("{propertyType}", typeMapping.hasOwnProperty(typeInfo.baseType) ? typeMapping[typeInfo.baseType]: typeMapping["Any"]);
     
     
 }
