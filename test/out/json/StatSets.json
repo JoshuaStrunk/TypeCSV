@@ -1,0 +1,20 @@
+{
+	"weakSet": {
+		"StatSetId": "weakSet",
+		"Health": 2,
+		"Attack": 1,
+		"Armor": 2
+	},
+	"standardSet": {
+		"StatSetId": "standardSet",
+		"Health": 5,
+		"Attack": 6,
+		"Armor": 4
+	},
+	"strongSet": {
+		"StatSetId": "strongSet",
+		"Health": 7,
+		"Attack": 8,
+		"Armor": 5
+	}
+}

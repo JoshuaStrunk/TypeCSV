@@ -83,7 +83,11 @@ let validTypes = {
         //adding reference type validators
         for(let tableName in tableDataLookup)
         {
-            validTypes[tableName] = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
+            let tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
+            validTypes[tableName] = tablesReferenceTypes["*"];
+            validTypes["*"+tableName] = tablesReferenceTypes["*"];
+            validTypes["^"+tableName] = tablesReferenceTypes["^"];
+            validTypes["&"+tableName] = tablesReferenceTypes["&"];
         }
         for(let validTypeName in validTypes) {
             console.log(validTypeName);
@@ -109,8 +113,7 @@ let validTypes = {
     }
     catch(e) 
     {
-        if(e.code === "ENOTDIR") genTable(pathToData, pathToOutDir);
-        else console.error(e);
+        console.error(e);
     }
 
 
@@ -247,20 +250,59 @@ function gatherTableData(filePath:string):CollectedTableData
     }
 }
 
-function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) : (str:string) => string
+function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) : TableReferencePrefixTypingFunctions
 {
-    return str => {
-        for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
-        {
-            if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
-            {
-                return str;
-            }
-        }
-        //TODO: need better information here likely will need to pass more context into typing functions
-        console.error(`Failed to validate ${str} as a reference type`);
-        return null;
+
+
+
+    return {
+        "*": str => {
+                for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+                {
+                    if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
+                    {
+                        return str;
+                    }
+                }
+                //TODO: need better information here likely will need to pass more context into typing functions
+                console.error(`Failed to validate ${str} as a reference type`);
+                return null;
+            },
+        "^": str => { 
+            for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+                {
+                    if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
+                    {
+                        if(typedTables.hasOwnProperty(tableData.tableName) && typedTables[tableData.tableName].hasOwnProperty(str))
+                        {
+                            return typedTables[tableData.tableName][str];
+                        }
+                        else
+                        {
+                            console.error(`^ reference type not fullly supported was unable to pull processed data for ${str}`);
+                            return null;
+                        }
+                    }
+                }
+
+            //TODO: need better information here likely will need to pass more context into typing functions
+            console.error(`Failed to validate ${str} as a reference type`); 
+            return null;
+        },
+        "&": str => { console.error(`& reference type not supported`);  return null;},
     };
+    // str => {
+    //     for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+    //     {
+    //         if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
+    //         {
+    //             return str;
+    //         }
+    //     }
+    //     //TODO: need better information here likely will need to pass more context into typing functions
+    //     console.error(`Failed to validate ${str} as a reference type`);
+    //     return null;
+    // };
 }
 
 function typeTable(tableData:CollectedTableData):{[primaryKey:string] : any}
@@ -280,17 +322,17 @@ function typeTable(tableData:CollectedTableData):{[primaryKey:string] : any}
         //Confirm integrity of primary key
         if(typedTableData.hasOwnProperty(primaryKeyValue)) {
             console.error(`Exited before completion: ${tableName}'s PrimiaryKey(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate key ${primaryKeyValue} found on row ${i+1}.`);
-            return;
+            return null;
         }
 
         typedTableData[primaryKeyValue] = {};
         for(let j=0; j<headerRow.length; j++) {
             let headerEntry = headerRow[j];
-            typedTableData[primaryKeyValue][mapPropertyName(headerEntry.propertyName, "CamelCase")] = typeEntry(entryRow[j], headerEntry.propertyType);
+            typedTableData[primaryKeyValue][styleNormalizedName(headerEntry.propertyName, "CamelCase")] = typeEntry(entryRow[j], headerEntry.propertyType);
         }
     }
 
-    return null;
+    return typedTableData;
 }
 
 function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:string] : any}, pathToOutDir:string)
@@ -299,13 +341,22 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
     const tableName = tableData.tableName;
     const normalizedTableName = normalizeTextName(tableData.tableName);
 
+
+    let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+    tryMakeDir(jsonifedTablesOutDir);
+    fs.writeFile(
+            path.join(jsonifedTablesOutDir, `${tableName}.json`), 
+            JSON.stringify(typedTableData, null, "\t"), 
+            (err) => { if(err !== null) console.error(JSON.stringify(err)); }
+        );
+
     let generatedFiles: {[key:string]: string} = {}
 
     for(let genId in config.codeGenerators) {
         if(config.codeGenerators.hasOwnProperty(genId))
         {
             let codeGenerator = config.codeGenerators[genId];
-            generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}",  mapPropertyName(normalizedTableName, codeGenerator.objectNameStyling))+'\n';
+            generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}",  styleNormalizedName(normalizedTableName, codeGenerator.objectNameStyling))+'\n';
         }
     }
 
@@ -319,8 +370,8 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
             if(config.codeGenerators.hasOwnProperty(genId))
             {
                 generatedFiles[genId] += '\t' + codeGenerator.objectProperty
-                    .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                    .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling))
+                    .replace("{propertyType}",  mapType(type, codeGenerator, codeGenerator.listType))
+                    .replace("{propertyName}",  styleNormalizedName(name, codeGenerator.objectPropertyNameStyling))
                     .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
                     '\n';
             }
@@ -342,196 +393,33 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
 }
 
 
-// let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
-// tryMakeDir(jsonifedTablesOutDir);
-// fs.writeFile(
-//         path.join(jsonifedTablesOutDir, `${tableName}.json`), 
-//         JSON.stringify(jsonified, null, "\t"), 
-//         (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-//     );
-function genTable(filePath:string, pathToOutDir:string) 
+function mapType(type:string, codeGenerator:ConfigCodeGeneratorEntry, listType:string) :string
 {
-     fs.readFile(filePath, 'utf8', (err, data) => {
 
-        if(err != null) {
-            switch(err.code) {
-                case "ENOENT": console.log(`File ${process.argv[2]} does not exist`); break;
-                default: console.log(JSON.stringify(err)); break;
-            }
-            return;
-        }
+    const typeMapping = codeGenerator.typeMapping;
 
-        let parsedCSV : string[][] = parse(data);
-        let tableName  = path.basename(filePath, '.csv');
-        let normalizedTableName = normalizeTextName(tableName);
-        //TODO: might really need to to a check for conflicting normalized table names
-
-        let headerRow:HeaderRowEntry[] = [];
-
-        let normalizedPropertyNames:string[] = [];
-
-        let primaryColumnIndex = 0;
-
-        let selectedTableFormat = config.tableFormats.hasOwnProperty(tableName) ? config.tableFormats[tableName] : config.defaultTableFormat;
-        if(selectedTableFormat == null)
-        {
-            console.error(`Failed to find table format for ${tableName} and no default table format provided`);
-            return;
-        }
-
-        for(let i=0; i<parsedCSV[0].length; i++)
-        {
-            headerRow.push({
-                propertyName: null,
-                propertyType: null,
-                propertyDescription: null,
-                specialKey: null,
-            })
-        }
-
-        for(let rowIndex=0; rowIndex<selectedTableFormat.headerMapping.length; rowIndex++)
-        {
-            parsedCSV[rowIndex].forEach((value, columnIndex) => {
-                let splitHeaderValue = value.split(':');
-                for(let cellSplitIndex=0; cellSplitIndex< selectedTableFormat.headerMapping[rowIndex].length; cellSplitIndex++)
-                {
-                    if(splitHeaderValue.length > cellSplitIndex)
-                    {
-                        switch(selectedTableFormat.headerMapping[rowIndex][cellSplitIndex])
-                        {
-                            case "PropertyName":
-                                headerRow[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
-                                break;
-
-                            case "PropertyType":
-                                headerRow[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
-                                break;
-
-                            case "PropertyDescription":
-                                headerRow[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
-                                break;
-
-                            case "SpecialModifer":
-                                headerRow[columnIndex].specialKey = splitHeaderValue[cellSplitIndex];
-                                break;
-
-                        }
-                    }
-                }
-            });
-        }
-        //Validate header row info
-        headerRow.forEach((headerRowEntry, index) => {
-
-            if(headerRowEntry.propertyName == null)
-            {
-                console.error(`Exited before completion: ${tableName}'s column ${index} does not have a valid property name`);
-                return;
-            }
-
-            if(headerRowEntry.propertyType == null)
-            {
-                headerRow[index].propertyType = "Any";
-            }
-            if(headerRowEntry.propertyDescription == null)
-            {
-                headerRow[index].propertyDescription = "";                
-            }
-
-            let normalizedPropertyName = headerRowEntry.propertyName;
-            if(normalizedPropertyNames.indexOf(normalizedPropertyName.join("")) > -1  )
-            {
-                console.error(`Exited before completion: ${tableName}'s PropertyName(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate PropertyName found.`);
-                return;
-            }
-            else
-            {
-                normalizedPropertyNames.push(normalizedPropertyName.join(""));
-            }
-
-            //Override default primary Column?
-            if(headerRowEntry.specialKey == "PrimaryKey") {
-                primaryColumnIndex = index;
-            }
-
-        });
-
-
-
-        let jsonified:{[primaryKey:string] : any} = {};
-        for(let i = selectedTableFormat.headerMapping.length; i<parsedCSV.length; i++) {
-            let entryRow = parsedCSV[i];
-            let primaryKeyValue = entryRow[primaryColumnIndex];
-            if(jsonified.hasOwnProperty(primaryKeyValue)) {
-                console.error(`Exited before completion: ${tableName}'s PrimiaryKey(${headerRow[primaryColumnIndex].propertyName}) integrity is compromised duplicate key ${primaryKeyValue} found on row ${i+1}.`);
-                return;
-            }
-            jsonified[primaryKeyValue] = {};
-            for(let j=0; j<headerRow.length; j++) {
-                let headerEntry = headerRow[j];
-                jsonified[primaryKeyValue][headerEntry.propertyName.join("_")] = typeEntry(entryRow[j], headerEntry.propertyType);
-            }
-            // let jsonifedTablesOutDir = path.join(pathToOutDir, "json");
-            // tryMakeDir(jsonifedTablesOutDir);
-            // fs.writeFile(
-            //         path.join(jsonifedTablesOutDir, `${tableName}.json`), 
-            //         JSON.stringify(jsonified, null, "\t"), 
-            //         (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-            //     );
-        }
-
-        let generatedFiles: {[key:string]: string} = {}
-
-        for(let genId in config.codeGenerators) {
-            if(config.codeGenerators.hasOwnProperty(genId))
-            {
-                let codeGenerator = config.codeGenerators[genId];
-                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}",  mapPropertyName(normalizedTableName, codeGenerator.objectNameStyling))+'\n';
-            }
-        }
-
-        for(let i=0; i<headerRow.length;i++) {
-            let type = headerRow[i].propertyType;
-            let name = headerRow[i].propertyName;
-            let description = headerRow[i].propertyDescription;
-
-            for(let genId in config.codeGenerators) {
-                let codeGenerator = config.codeGenerators[genId];
-                if(config.codeGenerators.hasOwnProperty(genId))
-                {
-                    generatedFiles[genId] += '\t' + codeGenerator.objectProperty
-                        .replace("{propertyType}",  mapType(type, codeGenerator.typeMapping, codeGenerator.listType))
-                        .replace("{propertyName}",  mapPropertyName(name, codeGenerator.objectPropertyNameStyling))
-                        .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
-                        '\n';
-                }
-            }
-        }
-        for(let genId in config.codeGenerators) {
-            if(config.codeGenerators.hasOwnProperty(genId))
-            {
-                generatedFiles[genId] += config.codeGenerators[genId].objectClose+'\n';
-                let generatedCodeOutDir = path.join(pathToOutDir, genId);
-                tryMakeDir(generatedCodeOutDir);
-                 fs.writeFile(
-                    path.join(generatedCodeOutDir, `${tableName}{ext}`.replace("{ext}", config.codeGenerators[genId].ext)), 
-                    generatedFiles[genId], 
-                    (err) => { if(err !== null) console.error(JSON.stringify(err)); }
-                );
-            }
-        }
-    });
-}
-
-function mapType(type:string, typeMapping:TypeMapping, listType:string) :string
-{
     let mappedType = "{propertyType}";
     let typeInfo = getBaseTypeAndListLevels(type);
     for(let i=0; i<typeInfo.listLevels; i++) {
         mappedType = mappedType.replace("{propertyType}", listType);
     }
     //TODO: consider fixing up TypeMapping to be more consistent
-    return mappedType.replace("{propertyType}", typeMapping.hasOwnProperty(typeInfo.baseType) ? typeMapping[typeInfo.baseType]: typeMapping["Any"]);
+
+    let calculatedTypeMapping = null;
+    if(typeMapping.hasOwnProperty(typeInfo.baseType))
+    {
+        calculatedTypeMapping = typeMapping[typeInfo.baseType];
+    }
+    else if(typeInfo.baseType[0] == "^")
+    {
+        calculatedTypeMapping = styleNormalizedName(normalizeTextName(typeInfo.baseType.slice(1)), codeGenerator.objectNameStyling);
+    }
+    else
+    {
+        calculatedTypeMapping = typeMapping["Any"];
+    }
+
+    return mappedType.replace("{propertyType}", calculatedTypeMapping);
     
     
 }
@@ -549,7 +437,7 @@ type CaseStyling = "CamelCase" | "camelCase" | "snake_case" | "SCREAMING_SNAKE_C
 
 type PropertyKeywords = "PropertyName" | "PropertyType" | "PropertyDescription" | "SpecialModifer";
 
-function mapPropertyName(normalizedPropertyName:string[], styling:CaseStyling):string
+function styleNormalizedName(normalizedPropertyName:string[], styling:CaseStyling):string
 {
     switch(styling)
     {
@@ -689,4 +577,14 @@ interface CollectedTableData
     headerRow:HeaderRowEntry[];
     normalizedPropertyNames:string[];
     primaryColumnIndex:number;
+}
+
+interface TableReferencePrefixTypingFunctions 
+{   
+    /** Will only store the string key which identifies the table this belongs to */
+    "*": (type:string) => string;
+    /** Will create a copy of the local table into this objects JSON stack*/
+    "^": (type:string) => {[key:string]:any};
+    /** Will store a string reference into the outputed data files but when for TypeCSV importers it will map the reference at runtime */
+    "&": (type:string) => string;
 }

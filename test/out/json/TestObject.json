@@ -1,0 +1,35 @@
+{
+	"object1": {
+		"ObjectName": "object1",
+		"SimpleString": "TestItem3",
+		"SimpleInt": 1,
+		"SimCardTest": "string",
+		"TestingThisOut": "string",
+		"TestTest": "string",
+		"TesTEst": "string",
+		"BrokenPromises": "string",
+		"UndErsCoreTest": "string"
+	},
+	"object2": {
+		"ObjectName": "object2",
+		"SimpleString": "TestItem3",
+		"SimpleInt": 2,
+		"SimCardTest": "string",
+		"TestingThisOut": "string",
+		"TestTest": "string",
+		"TesTEst": "string",
+		"BrokenPromises": "string",
+		"UndErsCoreTest": "string"
+	},
+	"object3": {
+		"ObjectName": "object3",
+		"SimpleString": "TestItem3",
+		"SimpleInt": 3,
+		"SimCardTest": "string",
+		"TestingThisOut": "string",
+		"TestTest": "string",
+		"TesTEst": "string",
+		"BrokenPromises": "string",
+		"UndErsCoreTest": "string"
+	}
+}

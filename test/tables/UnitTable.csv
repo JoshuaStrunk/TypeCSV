@@ -1,4 +1,4 @@
-UnitId:String:PrimaryKey,Stats:StatSets
+UnitId:String:PrimaryKey,Stats:^StatSets
 Peon,weakSet
 Warrior,standardSet
 Chief,strongSet
