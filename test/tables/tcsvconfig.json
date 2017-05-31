@@ -1,22 +1,33 @@
 {
     "tableFormats": {
         "TestObject": {
-            "headerMapping": [
-                ["PropertyName", "PropertyType", "SpecialModifer"],
-                ["PropertyDescription"]
-            ]
+            "headerMapping": 
+            {
+                "tableHeaders":[],
+                "columnHeaders":[ 
+                    ["PropertyName", "PropertyType", "SpecialModifer"],
+                    ["PropertyDescription"]
+                ]
+            }
         },
         "StatSets": {
-            "headerMapping": [ 
-                ["PropertyName", "PropertyType", "SpecialModifer"],
-                ["PropertyDescription"]
-            ]
+            "headerMapping": 
+            {
+                "tableHeaders":[],
+                "columnHeaders":[ 
+                    ["PropertyName", "PropertyType", "SpecialModifer"],
+                    ["PropertyDescription"]
+                ]
+            }
         }
     },
     "defaultTableFormat": {
-        "headerMapping": [
+        "headerMapping": {
+            "tableHeaders":[],
+            "columnHeaders":[
                 ["PropertyName", "PropertyType", "SpecialModifer"]
             ]
+        } 
     },
     "codeGenerators" : {
         "csharp": {

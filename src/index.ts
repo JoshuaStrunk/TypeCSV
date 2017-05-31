@@ -79,11 +79,12 @@ let validTypes = {
                 }
             }
         }
-
+        console.log("ref" + JSON.stringify(tableDataLookup));
         //adding reference type validators
         for(let tableName in tableDataLookup)
         {
             let tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
+            console.log("ref: " + JSON.stringify(tablesReferenceTypes));
             validTypes[tableName] = tablesReferenceTypes["*"];
             validTypes["*"+tableName] = tablesReferenceTypes["*"];
             validTypes["^"+tableName] = tablesReferenceTypes["^"];
@@ -163,16 +164,16 @@ function gatherTableData(filePath:string):CollectedTableData
                 specialKey: null,
             })
         }
-
-        for(let rowIndex=0; rowIndex<selectedTableFormat.headerMapping.length; rowIndex++)
+        const columnHeaders = selectedTableFormat.headerMapping.columnHeaders;
+        for(let rowIndex=0; rowIndex<columnHeaders.length; rowIndex++)
         {
             parsedCSV[rowIndex].forEach((value, columnIndex) => {
                 let splitHeaderValue = value.split(':');
-                for(let cellSplitIndex=0; cellSplitIndex< selectedTableFormat.headerMapping[rowIndex].length; cellSplitIndex++)
+                for(let cellSplitIndex=0; cellSplitIndex< columnHeaders[rowIndex].length; cellSplitIndex++)
                 {
                     if(splitHeaderValue.length > cellSplitIndex)
                     {
-                        switch(selectedTableFormat.headerMapping[rowIndex][cellSplitIndex])
+                        switch(columnHeaders[rowIndex][cellSplitIndex])
                         {
                             case "PropertyName":
                                 headerRow[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
@@ -194,9 +195,9 @@ function gatherTableData(filePath:string):CollectedTableData
                     }
                 }
             });
-            }
-            //Validate header row info
-            headerRow.forEach((headerRowEntry, index) => {
+        }
+        //Validate header row info
+        headerRow.forEach((headerRowEntry, index) => {
 
             if(headerRowEntry.propertyName == null)
             {
@@ -257,7 +258,7 @@ function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) :
 
     return {
         "*": str => {
-                for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+                for(let i=tableData.tableFormat.headerMapping.columnHeaders.length; i< tableData.parsedCSV.length; i++)
                 {
                     if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
                     {
@@ -269,7 +270,7 @@ function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) :
                 return null;
             },
         "^": str => { 
-            for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
+            for(let i=tableData.tableFormat.headerMapping.columnHeaders.length; i< tableData.parsedCSV.length; i++)
                 {
                     if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
                     {
@@ -308,14 +309,14 @@ function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) :
 function typeTable(tableData:CollectedTableData):{[primaryKey:string] : any}
 {
 
-    const headerMapping = tableData.tableFormat.headerMapping;
+    const columnHeaders = tableData.tableFormat.headerMapping.columnHeaders;
     const parsedCSV = tableData.parsedCSV;
     const primaryColumnIndex = tableData.primaryColumnIndex;
     const tableName = tableData.tableName;
     const headerRow = tableData.headerRow;
 
     let typedTableData:{[primaryKey:string] : any} = {};
-    for(let i = headerMapping.length; i<parsedCSV.length; i++) {
+    for(let i = columnHeaders.length; i<parsedCSV.length; i++) {
         let entryRow = parsedCSV[i];
         let primaryKeyValue = entryRow[primaryColumnIndex];
 
@@ -435,7 +436,10 @@ function normalizeTextName(rawPropertyName:string):string[]
 
 type CaseStyling = "CamelCase" | "camelCase" | "snake_case" | "SCREAMING_SNAKE_CASE" | "kebab-case" | "Train-Case" | "stUdLyCaPs";
 
-type PropertyKeywords = "PropertyName" | "PropertyType" | "PropertyDescription" | "SpecialModifer";
+type ColumnHeaderConfigKeywords = "PropertyName" | "PropertyType" | "PropertyDescription" | "SpecialModifer";
+type TableHeaderConfigKeywords = "TableEntryName";
+type PropertyKeywords = "PrimaryKey";
+type TableStructuralType = "Dictionary" | "GroupedSets" | "GroupedDictionarys" | "Set"
 
 function styleNormalizedName(normalizedPropertyName:string[], styling:CaseStyling):string
 {
@@ -539,7 +543,11 @@ interface ConfigCodeGeneratorEntry
 
 interface ConfigTableFormatEntry
 {
-    headerMapping:PropertyKeywords[][];
+    
+    headerMapping: {
+        tableHeaders:string[][];
+        columnHeaders:ColumnHeaderConfigKeywords[][];
+    }
 }
 
 interface TypeMapping

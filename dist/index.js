@@ -56,9 +56,11 @@ var validTypes = {
                 }
             }
         }
+        console.log("ref" + JSON.stringify(tableDataLookup));
         //adding reference type validators
         for (var tableName in tableDataLookup) {
             var tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
+            console.log("ref: " + JSON.stringify(tablesReferenceTypes));
             validTypes[tableName] = tablesReferenceTypes["*"];
             validTypes["*" + tableName] = tablesReferenceTypes["*"];
             validTypes["^" + tableName] = tablesReferenceTypes["^"];
@@ -103,8 +105,8 @@ function gatherTableData(filePath) {
         var headerRow_1 = [];
         var normalizedPropertyNames_1 = [];
         var primaryColumnIndex_1 = 0;
-        var selectedTableFormat_1 = config.tableFormats.hasOwnProperty(tableName_1) ? config.tableFormats[tableName_1] : config.defaultTableFormat;
-        if (selectedTableFormat_1 == null) {
+        var selectedTableFormat = config.tableFormats.hasOwnProperty(tableName_1) ? config.tableFormats[tableName_1] : config.defaultTableFormat;
+        if (selectedTableFormat == null) {
             console.error("Failed to find table format for " + tableName_1 + " and no default table format provided");
             return;
         }
@@ -116,12 +118,13 @@ function gatherTableData(filePath) {
                 specialKey: null,
             });
         }
+        var columnHeaders_1 = selectedTableFormat.headerMapping.columnHeaders;
         var _loop_1 = function (rowIndex) {
             parsedCSV[rowIndex].forEach(function (value, columnIndex) {
                 var splitHeaderValue = value.split(':');
-                for (var cellSplitIndex = 0; cellSplitIndex < selectedTableFormat_1.headerMapping[rowIndex].length; cellSplitIndex++) {
+                for (var cellSplitIndex = 0; cellSplitIndex < columnHeaders_1[rowIndex].length; cellSplitIndex++) {
                     if (splitHeaderValue.length > cellSplitIndex) {
-                        switch (selectedTableFormat_1.headerMapping[rowIndex][cellSplitIndex]) {
+                        switch (columnHeaders_1[rowIndex][cellSplitIndex]) {
                             case "PropertyName":
                                 headerRow_1[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
                                 break;
@@ -139,7 +142,7 @@ function gatherTableData(filePath) {
                 }
             });
         };
-        for (var rowIndex = 0; rowIndex < selectedTableFormat_1.headerMapping.length; rowIndex++) {
+        for (var rowIndex = 0; rowIndex < columnHeaders_1.length; rowIndex++) {
             _loop_1(rowIndex);
         }
         //Validate header row info
@@ -171,7 +174,7 @@ function gatherTableData(filePath) {
             parsedCSV: parsedCSV,
             tableName: tableName_1,
             headerRow: headerRow_1,
-            tableFormat: selectedTableFormat_1,
+            tableFormat: selectedTableFormat,
             normalizedPropertyNames: normalizedPropertyNames_1,
             primaryColumnIndex: primaryColumnIndex_1,
         };
@@ -193,7 +196,7 @@ function gatherTableData(filePath) {
 function generateTablesReferenceTypeingFunctions(tableData) {
     return {
         "*": function (str) {
-            for (var i = tableData.tableFormat.headerMapping.length; i < tableData.parsedCSV.length; i++) {
+            for (var i = tableData.tableFormat.headerMapping.columnHeaders.length; i < tableData.parsedCSV.length; i++) {
                 if (tableData.parsedCSV[i][tableData.primaryColumnIndex] === str) {
                     return str;
                 }
@@ -203,7 +206,7 @@ function generateTablesReferenceTypeingFunctions(tableData) {
             return null;
         },
         "^": function (str) {
-            for (var i = tableData.tableFormat.headerMapping.length; i < tableData.parsedCSV.length; i++) {
+            for (var i = tableData.tableFormat.headerMapping.columnHeaders.length; i < tableData.parsedCSV.length; i++) {
                 if (tableData.parsedCSV[i][tableData.primaryColumnIndex] === str) {
                     if (typedTables.hasOwnProperty(tableData.tableName) && typedTables[tableData.tableName].hasOwnProperty(str)) {
                         return typedTables[tableData.tableName][str];
@@ -234,13 +237,13 @@ function generateTablesReferenceTypeingFunctions(tableData) {
     // };
 }
 function typeTable(tableData) {
-    var headerMapping = tableData.tableFormat.headerMapping;
+    var columnHeaders = tableData.tableFormat.headerMapping.columnHeaders;
     var parsedCSV = tableData.parsedCSV;
     var primaryColumnIndex = tableData.primaryColumnIndex;
     var tableName = tableData.tableName;
     var headerRow = tableData.headerRow;
     var typedTableData = {};
-    for (var i = headerMapping.length; i < parsedCSV.length; i++) {
+    for (var i = columnHeaders.length; i < parsedCSV.length; i++) {
         var entryRow = parsedCSV[i];
         var primaryKeyValue = entryRow[primaryColumnIndex];
         //Confirm integrity of primary key
