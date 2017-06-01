@@ -1,6 +1,6 @@
-interface UnitTable {
+interface Unit {
 	/**  */
 	unitId : string,
 	/**  */
-	stats : StatSets,
+	stats : StatSet,
 }

@@ -1,4 +1,4 @@
-public class StatSets {
+public class StatSet {
 	/// <summary>Unquie identifer for a a set of stats.
 	public string statSetId;
 	/// <summary>Determines the amount of a hits a unit could take before perishing.

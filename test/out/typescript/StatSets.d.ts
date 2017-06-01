@@ -1,4 +1,4 @@
-interface StatSets {
+interface StatSet {
 	/** Unquie identifer for a a set of stats. */
 	statSetId : string,
 	/** Determines the amount of a hits a unit could take before perishing. */

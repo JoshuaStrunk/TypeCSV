@@ -15,7 +15,7 @@ var validTypes = {
             return parsedInt;
         }
         else {
-            console.error("Attempt to convert " + val + " to int failed");
+            console.log("Attempt to convert " + val + " to int failed");
             return null;
         }
     },
@@ -25,7 +25,7 @@ var validTypes = {
             return parsedFloat;
         }
         else {
-            console.error("Attempt to convert " + val + " to float failed");
+            console.log("Attempt to convert " + val + " to float failed");
             return null;
         }
     }
@@ -56,7 +56,6 @@ var validTypes = {
                 }
             }
         }
-        console.log("ref" + JSON.stringify(tableDataLookup));
         //adding reference type validators
         for (var tableName in tableDataLookup) {
             var tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
@@ -82,7 +81,7 @@ var validTypes = {
         }
     }
     catch (e) {
-        console.error(e);
+        console.log(JSON.stringify(e));
     }
 }());
 function tryMakeDir(path) {
@@ -91,7 +90,7 @@ function tryMakeDir(path) {
     }
     catch (e) {
         if (e.code !== "EEXIST") {
-            console.error(JSON.stringify(e));
+            console.log(JSON.stringify(e));
             return;
         }
     }
@@ -103,52 +102,78 @@ function gatherTableData(filePath) {
         var tableName_1 = path.basename(filePath, '.csv');
         var normalizedTableName = normalizeTextName(tableName_1);
         var headerRow_1 = [];
+        var tableInfo = {
+            singleEntryObjectName: tableName_1 + "Entry",
+            collectionLayout: null,
+        };
         var normalizedPropertyNames_1 = [];
         var primaryColumnIndex_1 = 0;
         var selectedTableFormat = config.tableFormats.hasOwnProperty(tableName_1) ? config.tableFormats[tableName_1] : config.defaultTableFormat;
         if (selectedTableFormat == null) {
-            console.error("Failed to find table format for " + tableName_1 + " and no default table format provided");
-            return;
+            console.log("Failed to find table format for " + tableName_1 + " and no default table format provided");
+            return null;
         }
-        for (var i = 0; i < parsedCSV[0].length; i++) {
+        var tableHeaderFormat = selectedTableFormat.headerMapping.tableHeaders;
+        for (var i = 0; i < parsedCSV[tableHeaderFormat.length].length; i++) {
             headerRow_1.push({
                 propertyName: null,
                 propertyType: null,
                 propertyDescription: null,
-                specialKey: null,
+                propertyKeywords: null,
             });
         }
-        var columnHeaders_1 = selectedTableFormat.headerMapping.columnHeaders;
+        for (var rowIndex = 0; rowIndex < tableHeaderFormat.length; rowIndex++) {
+            for (var columnIndex = 0; columnIndex < tableHeaderFormat[rowIndex].length; columnIndex++) {
+                switch (tableHeaderFormat[rowIndex][columnIndex]) {
+                    case "SingleEntryObjectName":
+                        tableInfo.singleEntryObjectName = parsedCSV[rowIndex][columnIndex];
+                        break;
+                    case "CollectionLayoutType":
+                        //TODO: validate keywords
+                        tableInfo.collectionLayout = parsedCSV[rowIndex][columnIndex];
+                        break;
+                }
+            }
+        }
+        var propertyHeaderFormat_1 = selectedTableFormat.headerMapping.columnHeaders;
+        console.log(JSON.stringify(propertyHeaderFormat_1));
         var _loop_1 = function (rowIndex) {
+            var propertyHeaderRowIndex = rowIndex - tableHeaderFormat.length;
             parsedCSV[rowIndex].forEach(function (value, columnIndex) {
-                var splitHeaderValue = value.split(':');
-                for (var cellSplitIndex = 0; cellSplitIndex < columnHeaders_1[rowIndex].length; cellSplitIndex++) {
-                    if (splitHeaderValue.length > cellSplitIndex) {
-                        switch (columnHeaders_1[rowIndex][cellSplitIndex]) {
-                            case "PropertyName":
-                                headerRow_1[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
-                                break;
-                            case "PropertyType":
-                                headerRow_1[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
-                                break;
-                            case "PropertyDescription":
-                                headerRow_1[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
-                                break;
-                            case "SpecialModifer":
-                                headerRow_1[columnIndex].specialKey = splitHeaderValue[cellSplitIndex];
-                                break;
+                try {
+                    var splitHeaderValue = value.split(':');
+                    for (var cellSplitIndex = 0; cellSplitIndex < propertyHeaderFormat_1[propertyHeaderRowIndex].length; cellSplitIndex++) {
+                        if (splitHeaderValue.length > cellSplitIndex) {
+                            switch (propertyHeaderFormat_1[propertyHeaderRowIndex][cellSplitIndex]) {
+                                case "PropertyName":
+                                    headerRow_1[columnIndex].propertyName = normalizeTextName(splitHeaderValue[cellSplitIndex]);
+                                    break;
+                                case "PropertyType":
+                                    headerRow_1[columnIndex].propertyType = splitHeaderValue[cellSplitIndex];
+                                    break;
+                                case "PropertyDescription":
+                                    headerRow_1[columnIndex].propertyDescription = splitHeaderValue[cellSplitIndex];
+                                    break;
+                                case "SpecialModifer":
+                                    headerRow_1[columnIndex].propertyKeywords = splitHeaderValue[cellSplitIndex];
+                                    break;
+                            }
                         }
                     }
                 }
+                catch (err) {
+                    console.error(err);
+                }
             });
         };
-        for (var rowIndex = 0; rowIndex < columnHeaders_1.length; rowIndex++) {
+        for (var rowIndex = tableHeaderFormat.length; rowIndex < (propertyHeaderFormat_1.length + tableHeaderFormat.length); rowIndex++) {
             _loop_1(rowIndex);
         }
         //Validate header row info
         headerRow_1.forEach(function (headerRowEntry, index) {
             if (headerRowEntry.propertyName == null) {
-                console.error("Exited before completion: " + tableName_1 + "'s column " + index + " does not have a valid property name");
+                console.log("Exited before completion: " + tableName_1 + "'s column " + index + " does not have a valid property name");
+                console.log("tests");
                 return;
             }
             if (headerRowEntry.propertyType == null) {
@@ -159,19 +184,21 @@ function gatherTableData(filePath) {
             }
             var normalizedPropertyName = headerRowEntry.propertyName;
             if (normalizedPropertyNames_1.indexOf(normalizedPropertyName.join("")) > -1) {
-                console.error("Exited before completion: " + tableName_1 + "'s PropertyName(" + headerRow_1[primaryColumnIndex_1].propertyName + ") integrity is compromised duplicate PropertyName found.");
+                console.log("Exited before completion: " + tableName_1 + "'s PropertyName(" + headerRow_1[primaryColumnIndex_1].propertyName + ") integrity is compromised duplicate PropertyName found.");
                 return;
             }
             else {
                 normalizedPropertyNames_1.push(normalizedPropertyName.join(""));
             }
             //Override default primary Column?
-            if (headerRowEntry.specialKey == "PrimaryKey") {
+            if (headerRowEntry.propertyKeywords == "PrimaryKey") {
                 primaryColumnIndex_1 = index;
             }
         });
+        console.log("tests");
         return {
-            parsedCSV: parsedCSV,
+            parsedCSVEntryData: parsedCSV.slice(tableHeaderFormat.length + propertyHeaderFormat_1.length),
+            tableInfo: tableInfo,
             tableName: tableName_1,
             headerRow: headerRow_1,
             tableFormat: selectedTableFormat,
@@ -186,42 +213,45 @@ function gatherTableData(filePath) {
                     console.log("File " + process.argv[2] + " does not exist");
                     break;
                 default:
-                    console.log(JSON.stringify(err));
+                    console.error(err);
                     break;
             }
             return null;
+        }
+        else {
+            console.error(err);
         }
     }
 }
 function generateTablesReferenceTypeingFunctions(tableData) {
     return {
         "*": function (str) {
-            for (var i = tableData.tableFormat.headerMapping.columnHeaders.length; i < tableData.parsedCSV.length; i++) {
-                if (tableData.parsedCSV[i][tableData.primaryColumnIndex] === str) {
+            for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
+                if (tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str) {
                     return str;
                 }
             }
             //TODO: need better information here likely will need to pass more context into typing functions
-            console.error("Failed to validate " + str + " as a reference type");
+            console.log("Failed to validate " + str + " as a reference type");
             return null;
         },
         "^": function (str) {
-            for (var i = tableData.tableFormat.headerMapping.columnHeaders.length; i < tableData.parsedCSV.length; i++) {
-                if (tableData.parsedCSV[i][tableData.primaryColumnIndex] === str) {
+            for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
+                if (tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str) {
                     if (typedTables.hasOwnProperty(tableData.tableName) && typedTables[tableData.tableName].hasOwnProperty(str)) {
                         return typedTables[tableData.tableName][str];
                     }
                     else {
-                        console.error("^ reference type not fullly supported was unable to pull processed data for " + str);
+                        console.log("^ reference type not fullly supported was unable to pull processed data for " + str);
                         return null;
                     }
                 }
             }
             //TODO: need better information here likely will need to pass more context into typing functions
-            console.error("Failed to validate " + str + " as a reference type");
+            console.log("Failed to validate " + str + " as a reference type");
             return null;
         },
-        "&": function (str) { console.error("& reference type not supported"); return null; },
+        "&": function (str) { console.log("& reference type not supported"); return null; },
     };
     // str => {
     //     for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
@@ -232,23 +262,24 @@ function generateTablesReferenceTypeingFunctions(tableData) {
     //         }
     //     }
     //     //TODO: need better information here likely will need to pass more context into typing functions
-    //     console.error(`Failed to validate ${str} as a reference type`);
+    //     console.log(`Failed to validate ${str} as a reference type`);
     //     return null;
     // };
 }
 function typeTable(tableData) {
+    var tableHeaders = tableData.tableFormat.headerMapping.tableHeaders;
     var columnHeaders = tableData.tableFormat.headerMapping.columnHeaders;
-    var parsedCSV = tableData.parsedCSV;
+    var parsedCSV = tableData.parsedCSVEntryData;
     var primaryColumnIndex = tableData.primaryColumnIndex;
     var tableName = tableData.tableName;
     var headerRow = tableData.headerRow;
     var typedTableData = {};
-    for (var i = columnHeaders.length; i < parsedCSV.length; i++) {
+    for (var i = 0; i < parsedCSV.length; i++) {
         var entryRow = parsedCSV[i];
         var primaryKeyValue = entryRow[primaryColumnIndex];
         //Confirm integrity of primary key
         if (typedTableData.hasOwnProperty(primaryKeyValue)) {
-            console.error("Exited before completion: " + tableName + "'s PrimiaryKey(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate key " + primaryKeyValue + " found on row " + (i + 1) + ".");
+            console.log("Exited before completion: " + tableName + "'s PrimiaryKey(" + headerRow[primaryColumnIndex].propertyName + ") integrity is compromised duplicate key " + primaryKeyValue + " found on row " + (i + 1) + ".");
             return null;
         }
         typedTableData[primaryKeyValue] = {};
@@ -260,43 +291,49 @@ function typeTable(tableData) {
     return typedTableData;
 }
 function outputTable(tableData, typedTableData, pathToOutDir) {
-    var headerRow = tableData.headerRow;
-    var tableName = tableData.tableName;
-    var normalizedTableName = normalizeTextName(tableData.tableName);
-    var jsonifedTablesOutDir = path.join(pathToOutDir, "json");
-    tryMakeDir(jsonifedTablesOutDir);
-    fs.writeFile(path.join(jsonifedTablesOutDir, tableName + ".json"), JSON.stringify(typedTableData, null, "\t"), function (err) { if (err !== null)
-        console.error(JSON.stringify(err)); });
-    var generatedFiles = {};
-    for (var genId in config.codeGenerators) {
-        if (config.codeGenerators.hasOwnProperty(genId)) {
-            var codeGenerator = config.codeGenerators[genId];
-            generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", styleNormalizedName(normalizedTableName, codeGenerator.objectNameStyling)) + '\n';
-        }
-    }
-    for (var i = 0; i < headerRow.length; i++) {
-        var type = headerRow[i].propertyType;
-        var name_1 = headerRow[i].propertyName;
-        var description = headerRow[i].propertyDescription;
+    try {
+        var headerRow = tableData.headerRow;
+        var tableName = tableData.tableName;
+        console.log(JSON.stringify(tableData));
+        var normalizedTableEntryObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        var jsonifedTablesOutDir = path.join(pathToOutDir, "json");
+        tryMakeDir(jsonifedTablesOutDir);
+        fs.writeFile(path.join(jsonifedTablesOutDir, tableName + ".json"), JSON.stringify(typedTableData, null, "\t"), function (err) { if (err !== null)
+            console.log(JSON.stringify(err)); });
+        var generatedFiles = {};
         for (var genId in config.codeGenerators) {
-            var codeGenerator = config.codeGenerators[genId];
             if (config.codeGenerators.hasOwnProperty(genId)) {
-                generatedFiles[genId] += '\t' + codeGenerator.objectProperty
-                    .replace("{propertyType}", mapType(type, codeGenerator, codeGenerator.listType))
-                    .replace("{propertyName}", styleNormalizedName(name_1, codeGenerator.objectPropertyNameStyling))
-                    .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
-                    '\n';
+                var codeGenerator = config.codeGenerators[genId];
+                generatedFiles[genId] = config.codeGenerators[genId].objectOpen.replace("{objectName}", styleNormalizedName(normalizedTableEntryObjectName, codeGenerator.objectNameStyling)) + '\n';
+            }
+        }
+        for (var i = 0; i < headerRow.length; i++) {
+            var type = headerRow[i].propertyType;
+            var name_1 = headerRow[i].propertyName;
+            var description = headerRow[i].propertyDescription;
+            for (var genId in config.codeGenerators) {
+                var codeGenerator = config.codeGenerators[genId];
+                if (config.codeGenerators.hasOwnProperty(genId)) {
+                    generatedFiles[genId] += '\t' + codeGenerator.objectProperty
+                        .replace("{propertyType}", mapType(type, codeGenerator, codeGenerator.listType))
+                        .replace("{propertyName}", styleNormalizedName(name_1, codeGenerator.objectPropertyNameStyling))
+                        .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
+                        '\n';
+                }
+            }
+        }
+        for (var genId in config.codeGenerators) {
+            if (config.codeGenerators.hasOwnProperty(genId)) {
+                generatedFiles[genId] += config.codeGenerators[genId].objectClose + '\n';
+                var generatedCodeOutDir = path.join(pathToOutDir, genId);
+                tryMakeDir(generatedCodeOutDir);
+                fs.writeFile(path.join(generatedCodeOutDir, (tableName + "{ext}").replace("{ext}", config.codeGenerators[genId].ext)), generatedFiles[genId], function (err) { if (err !== null)
+                    console.log(JSON.stringify(err)); });
             }
         }
     }
-    for (var genId in config.codeGenerators) {
-        if (config.codeGenerators.hasOwnProperty(genId)) {
-            generatedFiles[genId] += config.codeGenerators[genId].objectClose + '\n';
-            var generatedCodeOutDir = path.join(pathToOutDir, genId);
-            tryMakeDir(generatedCodeOutDir);
-            fs.writeFile(path.join(generatedCodeOutDir, (tableName + "{ext}").replace("{ext}", config.codeGenerators[genId].ext)), generatedFiles[genId], function (err) { if (err !== null)
-                console.error(JSON.stringify(err)); });
-        }
+    catch (err) {
+        console.error(err);
     }
 }
 function mapType(type, codeGenerator, listType) {
@@ -312,7 +349,8 @@ function mapType(type, codeGenerator, listType) {
         calculatedTypeMapping = typeMapping[typeInfo.baseType];
     }
     else if (typeInfo.baseType[0] == "^") {
-        calculatedTypeMapping = styleNormalizedName(normalizeTextName(typeInfo.baseType.slice(1)), codeGenerator.objectNameStyling);
+        var objectName = tableDataLookup[typeInfo.baseType.slice(1)].tableInfo.singleEntryObjectName;
+        calculatedTypeMapping = styleNormalizedName(normalizeTextName(objectName), codeGenerator.objectNameStyling);
     }
     else {
         calculatedTypeMapping = typeMapping["Any"];
@@ -320,11 +358,16 @@ function mapType(type, codeGenerator, listType) {
     return mappedType.replace("{propertyType}", calculatedTypeMapping);
 }
 function normalizeTextName(rawPropertyName) {
-    return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
-        .replace(/_/g, " ") //Then split out the underscore_spacing to underscore spacing
-        .split(" ") //then split on spaces
-        .map(function (entry) { return entry.toLocaleLowerCase(); }) //remove casing
-        .filter(function (entry) { return entry !== ""; }); //remove empty strings
+    try {
+        return rawPropertyName.replace(/([A-Z][a-z])/g, ' $1') //First normalize the CamelCasing to Camel Casing
+            .replace(/_/g, " ") //Then split out the underscore_spacing to underscore spacing
+            .split(" ") //then split on spaces
+            .map(function (entry) { return entry.toLocaleLowerCase(); }) //remove casing
+            .filter(function (entry) { return entry !== ""; }); //remove empty strings
+    }
+    catch (err) {
+        console.log(JSON.stringify(err));
+    }
 }
 function styleNormalizedName(normalizedPropertyName, styling) {
     switch (styling) {
@@ -373,7 +416,7 @@ function typeValue(val, baseType, listLevels) {
             return validTypes[baseType](val);
         }
         else {
-            console.error("Could not find method to process value of type " + baseType);
+            console.log("Could not find method to process value of type " + baseType);
         }
     }
     else
