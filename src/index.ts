@@ -84,12 +84,7 @@ let validTypes = {
         //adding reference type validators
         for(let tableName in tableDataLookup)
         {
-            let tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
-            console.log("ref: " + JSON.stringify(tablesReferenceTypes));
-            validTypes[tableName] = tablesReferenceTypes["*"];
-            validTypes["*"+tableName] = tablesReferenceTypes["*"];
-            validTypes["^"+tableName] = tablesReferenceTypes["^"];
-            validTypes["&"+tableName] = tablesReferenceTypes["&"];
+            validTypes[tableName] = generateTablesReferenceTypeingFunction(tableDataLookup[tableName]);
         }
         for(let validTypeName in validTypes) {
             console.log(validTypeName);
@@ -111,6 +106,8 @@ let validTypes = {
         {
             outputTable(tableDataLookup[tableName], typedTables[tableName], pathToOutDir);
         }
+
+        outputUnityImporter("");
 
     }
     catch(e) 
@@ -298,10 +295,9 @@ function gatherTableData(filePath:string):CollectedTableData
     }
 }
 
-function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) : TableReferencePrefixTypingFunctions
+function generateTablesReferenceTypeingFunction(tableData:CollectedTableData) : (type:string) => string
 {
-    return {
-        "*": str => {
+    return  str => {
                 for(let i=0; i< tableData.parsedCSVEntryData.length; i++)
                 {
                     if(tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str)
@@ -312,42 +308,7 @@ function generateTablesReferenceTypeingFunctions(tableData:CollectedTableData) :
                 //TODO: need better information here likely will need to pass more context into typing functions
                 console.log(`Failed to validate ${str} as a reference type`);
                 return null;
-            },
-        "^": str => { 
-            for(let i=0; i< tableData.parsedCSVEntryData.length; i++)
-                {
-                    if(tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str)
-                    {
-                        if(typedTables.hasOwnProperty(tableData.tableName) && typedTables[tableData.tableName].hasOwnProperty(str))
-                        {
-                            return typedTables[tableData.tableName][str];
-                        }
-                        else
-                        {
-                            console.log(`^ reference type not fullly supported was unable to pull processed data for ${str}`);
-                            return null;
-                        }
-                    }
-                }
-
-            //TODO: need better information here likely will need to pass more context into typing functions
-            console.log(`Failed to validate ${str} as a reference type`); 
-            return null;
-        },
-        "&": str => { console.log(`& reference type not supported`);  return null;},
-    };
-    // str => {
-    //     for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
-    //     {
-    //         if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
-    //         {
-    //             return str;
-    //         }
-    //     }
-    //     //TODO: need better information here likely will need to pass more context into typing functions
-    //     console.log(`Failed to validate ${str} as a reference type`);
-    //     return null;
-    // };
+            };
 }
 
 function typeTable(tableData:CollectedTableData):{[primaryKey:string] : any}
@@ -418,7 +379,7 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
                 if(config.codeGenerators.hasOwnProperty(genId))
                 {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
-                        .replace("{propertyType}",  mapType(type, codeGenerator, codeGenerator.listType))
+                        .replace("{propertyType}",  rawMapType(type, codeGenerator, codeGenerator.listType))
                         .replace("{propertyName}",  styleNormalizedName(name, codeGenerator.objectPropertyNameStyling))
                         .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
                         '\n';
@@ -439,7 +400,7 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
             }
         }
 
-        }
+    }
     catch(err)
     {
         console.error(err);
@@ -447,9 +408,126 @@ function outputTable(tableData:CollectedTableData, typedTableData:{[primaryKey:s
 }
 
 
-function mapType(type:string, codeGenerator:ConfigCodeGeneratorEntry, listType:string) :string
+function outputUnityImporter(pathToOutDir:string)
 {
 
+    let mainDataImporterFile:string = "";
+    let codeGenSettings = config.codeGenerators["csharp"];
+
+
+    mainDataImporterFile += "public static class Data\n{\n";
+
+    for(let tableId in tableDataLookup)
+    {
+        let tableData = tableDataLookup[tableId];
+        let normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        let normalizedCollectionName = normalizeTextName(tableData.tableName);
+
+        mainDataImporterFile +=`\tpublic static ReadOnlyDictionary<${styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling)},${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}> ${styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling)} { get; private set; };\n`
+    }
+
+    mainDataImporterFile += `\n\tpublic static Load(Dictionary<string,string> dataSource)\n\t{\n`
+    for(let tableId in tableDataLookup)
+    {
+        let tableData = tableDataLookup[tableId];
+        let normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        let normalizedCollectionName = normalizeTextName(tableData.tableName);
+
+        let objectName = styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling);
+
+        mainDataImporterFile +=`\t\t${styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling)} = new ReadOnlyDictionary(JsonConvert.DeserializeObject<Dictionary<${styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling)},${objectName}.Raw>>(dataSource["${styleNormalizedName(normalizedCollectionName, codeGenSettings.objectNameStyling)}"]).ToDictionary(keyValuePair => keyValuePair.Key, new${objectName}(keyValuePair => keyValuePair.Value)));\n`
+    }
+
+    mainDataImporterFile += `\t}\n`;
+
+    mainDataImporterFile += "\n"
+    for(let tableId in tableDataLookup)
+    {
+        let tableData = tableDataLookup[tableId];
+        let normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        let normalizedCollectionName = normalizeTextName(tableData.tableName);
+
+        mainDataImporterFile +=`\tpublic enum ${styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling)}\n\t{\n`
+        for(let i=0; i<tableData.parsedCSVEntryData.length; i++)
+        {
+            mainDataImporterFile +=`\t\t${ styleNormalizedName(normalizeTextName(tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex]), "CamelCase")}${i==tableData.parsedCSVEntryData.length-1?"":","}\n` 
+        }
+        mainDataImporterFile += `\t};\n`
+    }
+    mainDataImporterFile += "\n"
+    for(let entryId in tableDataLookup)
+    {
+        let tableData = tableDataLookup[entryId];
+        let headerRow = tableData.headerRow;
+        
+        let normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        mainDataImporterFile += "\t[JsonObject(MemberSerialization.OptIn)]\n"
+        mainDataImporterFile += `\tprivate struct ${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}\n\t{\n`
+        for(let i=0; i<headerRow.length;i++) {
+            let type = headerRow[i].propertyType;
+            let name = headerRow[i].propertyName;
+            let description = headerRow[i].propertyDescription;
+            if(description != null && description != "")
+            {
+                mainDataImporterFile += `\t\t/// <summary>${description}\n`;
+            }
+
+            if(tableData.primaryColumnIndex == i )
+            {
+                mainDataImporterFile += `\t\tpublic ${styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling)} ${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)} { get{ return rawData.${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)}; } }\n`
+            }
+            else if(isTableReferenceType(type, codeGenSettings))
+            {
+                mainDataImporterFile += `\t\tpublic ${referenceMapType(type, codeGenSettings, codeGenSettings.listType)} ${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)} { get{ return Data.${styleNormalizedName(normalizeTextName(type), codeGenSettings.objectPropertyNameStyling)}[rawData.${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)}]; } }\n`;                
+            }
+            else
+            {
+                mainDataImporterFile += `\t\tpublic ${referenceMapType(type, codeGenSettings, codeGenSettings.listType)} ${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)} { get{ return rawData.${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)}; } }\n`;
+            }
+            mainDataImporterFile += `\n`;
+
+
+        }
+        mainDataImporterFile += "\t\t[JsonProperty]\n"
+        mainDataImporterFile += `\t\tprivate Raw rawData;\n`;
+        mainDataImporterFile += `\t\tpublic struct Raw\n\t\t{\n`;
+         for(let i=0; i<headerRow.length;i++) {
+            let type = headerRow[i].propertyType;
+            let name = headerRow[i].propertyName;
+            let description = headerRow[i].propertyDescription;
+
+            if(tableData.primaryColumnIndex == i )
+            {
+                mainDataImporterFile += `\t\t\tpublic ${styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling)} ${styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling)};\n`
+            }
+            else
+            {
+                mainDataImporterFile += '\t\t\tpublic {propertyType} {propertyName};'
+                    .replace("{propertyType}",  rawMapType(type, codeGenSettings, codeGenSettings.listType))
+                    .replace("{propertyName}",  styleNormalizedName(name, codeGenSettings.objectPropertyNameStyling))
+                    .replace("{propertyDescription}", description).replace(/\n/g, "\n\t\t\t") +
+                    '\n';
+            }
+
+
+        }
+        mainDataImporterFile += `\t\t}\n`;
+
+
+        mainDataImporterFile += "\t}\n";
+    }
+
+
+    mainDataImporterFile += "}";
+
+    console.log(mainDataImporterFile);
+
+}
+
+
+
+function rawMapType(type:string, codeGenerator:ConfigCodeGeneratorEntry, listType:string) :string
+{
     const typeMapping = codeGenerator.typeMapping;
 
     let mappedType = "{propertyType}";
@@ -464,20 +542,51 @@ function mapType(type:string, codeGenerator:ConfigCodeGeneratorEntry, listType:s
     {
         calculatedTypeMapping = typeMapping[typeInfo.baseType];
     }
-    else if(typeInfo.baseType[0] == "^")
-    {
-        let objectName = tableDataLookup[typeInfo.baseType.slice(1)].tableInfo.singleEntryObjectName;
-        calculatedTypeMapping = styleNormalizedName(normalizeTextName(objectName), codeGenerator.objectNameStyling);
-    }
     else
     {
-        calculatedTypeMapping = typeMapping["Any"];
+        calculatedTypeMapping =  styleNormalizedName(normalizeTextName(tableDataLookup[typeInfo.baseType].tableInfo.singleEntryObjectName).concat(["id"]), "CamelCase"); //typeMapping["Any"];
     }
 
     return mappedType.replace("{propertyType}", calculatedTypeMapping);
-    
-    
 }
+function referenceMapType(type:string, codeGenerator:ConfigCodeGeneratorEntry, listType:string):string
+{
+    try
+    {
+        const typeMapping = codeGenerator.typeMapping;
+
+        let mappedType = "{propertyType}";
+        let typeInfo = getBaseTypeAndListLevels(type);
+        for(let i=0; i<typeInfo.listLevels; i++) {
+            mappedType = mappedType.replace("{propertyType}", listType);
+        }
+        //TODO: consider fixing up TypeMapping to be more consistent
+
+        let calculatedTypeMapping = null;
+        if(typeMapping.hasOwnProperty(typeInfo.baseType))
+        {
+            calculatedTypeMapping = typeMapping[typeInfo.baseType];
+        }
+        else
+        {
+            let objectName = tableDataLookup[typeInfo.baseType].tableInfo.singleEntryObjectName;
+            calculatedTypeMapping = styleNormalizedName(normalizeTextName(objectName), codeGenerator.objectNameStyling);
+        }
+
+        return mappedType.replace("{propertyType}", calculatedTypeMapping)
+    }
+    catch(err)
+    {
+        console.error(err);
+    }
+}
+
+function isTableReferenceType(type:string, codeGenerator:ConfigCodeGeneratorEntry):boolean
+{
+    return !codeGenerator.typeMapping.hasOwnProperty(getBaseTypeAndListLevels(type).baseType);
+}
+
+
 
 function normalizeTextName(rawPropertyName:string):string[]
 {
@@ -659,12 +768,3 @@ interface CollectedTableData
     primaryColumnIndex:number;
 }
 
-interface TableReferencePrefixTypingFunctions 
-{   
-    /** Will only store the string key which identifies the table this belongs to */
-    "*": (type:string) => string;
-    /** Will create a copy of the local table into this objects JSON stack*/
-    "^": (type:string) => {[key:string]:any};
-    /** Will store a string reference into the outputed data files but when for TypeCSV importers it will map the reference at runtime */
-    "&": (type:string) => string;
-}

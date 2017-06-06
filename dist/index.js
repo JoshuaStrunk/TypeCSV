@@ -58,12 +58,7 @@ var validTypes = {
         }
         //adding reference type validators
         for (var tableName in tableDataLookup) {
-            var tablesReferenceTypes = generateTablesReferenceTypeingFunctions(tableDataLookup[tableName]);
-            console.log("ref: " + JSON.stringify(tablesReferenceTypes));
-            validTypes[tableName] = tablesReferenceTypes["*"];
-            validTypes["*" + tableName] = tablesReferenceTypes["*"];
-            validTypes["^" + tableName] = tablesReferenceTypes["^"];
-            validTypes["&" + tableName] = tablesReferenceTypes["&"];
+            validTypes[tableName] = generateTablesReferenceTypeingFunction(tableDataLookup[tableName]);
         }
         for (var validTypeName in validTypes) {
             console.log(validTypeName);
@@ -79,6 +74,7 @@ var validTypes = {
         for (var tableName in tableDataLookup) {
             outputTable(tableDataLookup[tableName], typedTables[tableName], pathToOutDir);
         }
+        outputUnityImporter("");
     }
     catch (e) {
         console.log(JSON.stringify(e));
@@ -223,48 +219,17 @@ function gatherTableData(filePath) {
         }
     }
 }
-function generateTablesReferenceTypeingFunctions(tableData) {
-    return {
-        "*": function (str) {
-            for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
-                if (tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str) {
-                    return str;
-                }
+function generateTablesReferenceTypeingFunction(tableData) {
+    return function (str) {
+        for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
+            if (tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str) {
+                return str;
             }
-            //TODO: need better information here likely will need to pass more context into typing functions
-            console.log("Failed to validate " + str + " as a reference type");
-            return null;
-        },
-        "^": function (str) {
-            for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
-                if (tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex] === str) {
-                    if (typedTables.hasOwnProperty(tableData.tableName) && typedTables[tableData.tableName].hasOwnProperty(str)) {
-                        return typedTables[tableData.tableName][str];
-                    }
-                    else {
-                        console.log("^ reference type not fullly supported was unable to pull processed data for " + str);
-                        return null;
-                    }
-                }
-            }
-            //TODO: need better information here likely will need to pass more context into typing functions
-            console.log("Failed to validate " + str + " as a reference type");
-            return null;
-        },
-        "&": function (str) { console.log("& reference type not supported"); return null; },
+        }
+        //TODO: need better information here likely will need to pass more context into typing functions
+        console.log("Failed to validate " + str + " as a reference type");
+        return null;
     };
-    // str => {
-    //     for(let i=tableData.tableFormat.headerMapping.length; i< tableData.parsedCSV.length; i++)
-    //     {
-    //         if(tableData.parsedCSV[i][tableData.primaryColumnIndex] === str)
-    //         {
-    //             return str;
-    //         }
-    //     }
-    //     //TODO: need better information here likely will need to pass more context into typing functions
-    //     console.log(`Failed to validate ${str} as a reference type`);
-    //     return null;
-    // };
 }
 function typeTable(tableData) {
     var tableHeaders = tableData.tableFormat.headerMapping.tableHeaders;
@@ -294,7 +259,6 @@ function outputTable(tableData, typedTableData, pathToOutDir) {
     try {
         var headerRow = tableData.headerRow;
         var tableName = tableData.tableName;
-        console.log(JSON.stringify(tableData));
         var normalizedTableEntryObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         var jsonifedTablesOutDir = path.join(pathToOutDir, "json");
         tryMakeDir(jsonifedTablesOutDir);
@@ -315,7 +279,7 @@ function outputTable(tableData, typedTableData, pathToOutDir) {
                 var codeGenerator = config.codeGenerators[genId];
                 if (config.codeGenerators.hasOwnProperty(genId)) {
                     generatedFiles[genId] += '\t' + codeGenerator.objectProperty
-                        .replace("{propertyType}", mapType(type, codeGenerator, codeGenerator.listType))
+                        .replace("{propertyType}", rawMapType(type, codeGenerator, codeGenerator.listType))
                         .replace("{propertyName}", styleNormalizedName(name_1, codeGenerator.objectPropertyNameStyling))
                         .replace("{propertyDescription}", description).replace(/\n/g, "\n\t") +
                         '\n';
@@ -336,7 +300,86 @@ function outputTable(tableData, typedTableData, pathToOutDir) {
         console.error(err);
     }
 }
-function mapType(type, codeGenerator, listType) {
+function outputUnityImporter(pathToOutDir) {
+    var mainDataImporterFile = "";
+    var codeGenSettings = config.codeGenerators["csharp"];
+    mainDataImporterFile += "public static class Data\n{\n";
+    for (var tableId in tableDataLookup) {
+        var tableData = tableDataLookup[tableId];
+        var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        var normalizedCollectionName = normalizeTextName(tableData.tableName);
+        mainDataImporterFile += "\tpublic static ReadOnlyDictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "> " + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " { get; private set; };\n";
+    }
+    mainDataImporterFile += "\n\tpublic static Load(Dictionary<string,string> dataSource)\n\t{\n";
+    for (var tableId in tableDataLookup) {
+        var tableData = tableDataLookup[tableId];
+        var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        var normalizedCollectionName = normalizeTextName(tableData.tableName);
+        var objectName = styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling);
+        mainDataImporterFile += "\t\t" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " = new ReadOnlyDictionary(JsonConvert.DeserializeObject<Dictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + objectName + ".Raw>>(dataSource[\"" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectNameStyling) + "\"]).ToDictionary(keyValuePair => keyValuePair.Key, new" + objectName + "(keyValuePair => keyValuePair.Value)));\n";
+    }
+    mainDataImporterFile += "\t}\n";
+    mainDataImporterFile += "\n";
+    for (var tableId in tableDataLookup) {
+        var tableData = tableDataLookup[tableId];
+        var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        var normalizedCollectionName = normalizeTextName(tableData.tableName);
+        mainDataImporterFile += "\tpublic enum " + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "\n\t{\n";
+        for (var i = 0; i < tableData.parsedCSVEntryData.length; i++) {
+            mainDataImporterFile += "\t\t" + styleNormalizedName(normalizeTextName(tableData.parsedCSVEntryData[i][tableData.primaryColumnIndex]), "CamelCase") + (i == tableData.parsedCSVEntryData.length - 1 ? "" : ",") + "\n";
+        }
+        mainDataImporterFile += "\t};\n";
+    }
+    mainDataImporterFile += "\n";
+    for (var entryId in tableDataLookup) {
+        var tableData = tableDataLookup[entryId];
+        var headerRow = tableData.headerRow;
+        var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        mainDataImporterFile += "\t[JsonObject(MemberSerialization.OptIn)]\n";
+        mainDataImporterFile += "\tprivate struct " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "\n\t{\n";
+        for (var i = 0; i < headerRow.length; i++) {
+            var type = headerRow[i].propertyType;
+            var name_2 = headerRow[i].propertyName;
+            var description = headerRow[i].propertyDescription;
+            if (description != null && description != "") {
+                mainDataImporterFile += "\t\t/// <summary>" + description + "\n";
+            }
+            if (tableData.primaryColumnIndex == i) {
+                mainDataImporterFile += "\t\tpublic " + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "; } }\n";
+            }
+            else if (isTableReferenceType(type, codeGenSettings)) {
+                mainDataImporterFile += "\t\tpublic " + referenceMapType(type, codeGenSettings, codeGenSettings.listType) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return Data." + styleNormalizedName(normalizeTextName(type), codeGenSettings.objectPropertyNameStyling) + "[rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "]; } }\n";
+            }
+            else {
+                mainDataImporterFile += "\t\tpublic " + referenceMapType(type, codeGenSettings, codeGenSettings.listType) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "; } }\n";
+            }
+            mainDataImporterFile += "\n";
+        }
+        mainDataImporterFile += "\t\t[JsonProperty]\n";
+        mainDataImporterFile += "\t\tprivate Raw rawData;\n";
+        mainDataImporterFile += "\t\tpublic struct Raw\n\t\t{\n";
+        for (var i = 0; i < headerRow.length; i++) {
+            var type = headerRow[i].propertyType;
+            var name_3 = headerRow[i].propertyName;
+            var description = headerRow[i].propertyDescription;
+            if (tableData.primaryColumnIndex == i) {
+                mainDataImporterFile += "\t\t\tpublic " + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + " " + styleNormalizedName(name_3, codeGenSettings.objectPropertyNameStyling) + ";\n";
+            }
+            else {
+                mainDataImporterFile += '\t\t\tpublic {propertyType} {propertyName};'
+                    .replace("{propertyType}", rawMapType(type, codeGenSettings, codeGenSettings.listType))
+                    .replace("{propertyName}", styleNormalizedName(name_3, codeGenSettings.objectPropertyNameStyling))
+                    .replace("{propertyDescription}", description).replace(/\n/g, "\n\t\t\t") +
+                    '\n';
+            }
+        }
+        mainDataImporterFile += "\t\t}\n";
+        mainDataImporterFile += "\t}\n";
+    }
+    mainDataImporterFile += "}";
+    console.log(mainDataImporterFile);
+}
+function rawMapType(type, codeGenerator, listType) {
     var typeMapping = codeGenerator.typeMapping;
     var mappedType = "{propertyType}";
     var typeInfo = getBaseTypeAndListLevels(type);
@@ -348,14 +391,36 @@ function mapType(type, codeGenerator, listType) {
     if (typeMapping.hasOwnProperty(typeInfo.baseType)) {
         calculatedTypeMapping = typeMapping[typeInfo.baseType];
     }
-    else if (typeInfo.baseType[0] == "^") {
-        var objectName = tableDataLookup[typeInfo.baseType.slice(1)].tableInfo.singleEntryObjectName;
-        calculatedTypeMapping = styleNormalizedName(normalizeTextName(objectName), codeGenerator.objectNameStyling);
-    }
     else {
-        calculatedTypeMapping = typeMapping["Any"];
+        calculatedTypeMapping = styleNormalizedName(normalizeTextName(tableDataLookup[typeInfo.baseType].tableInfo.singleEntryObjectName).concat(["id"]), "CamelCase"); //typeMapping["Any"];
     }
     return mappedType.replace("{propertyType}", calculatedTypeMapping);
+}
+function referenceMapType(type, codeGenerator, listType) {
+    try {
+        var typeMapping = codeGenerator.typeMapping;
+        var mappedType = "{propertyType}";
+        var typeInfo = getBaseTypeAndListLevels(type);
+        for (var i = 0; i < typeInfo.listLevels; i++) {
+            mappedType = mappedType.replace("{propertyType}", listType);
+        }
+        //TODO: consider fixing up TypeMapping to be more consistent
+        var calculatedTypeMapping = null;
+        if (typeMapping.hasOwnProperty(typeInfo.baseType)) {
+            calculatedTypeMapping = typeMapping[typeInfo.baseType];
+        }
+        else {
+            var objectName = tableDataLookup[typeInfo.baseType].tableInfo.singleEntryObjectName;
+            calculatedTypeMapping = styleNormalizedName(normalizeTextName(objectName), codeGenerator.objectNameStyling);
+        }
+        return mappedType.replace("{propertyType}", calculatedTypeMapping);
+    }
+    catch (err) {
+        console.error(err);
+    }
+}
+function isTableReferenceType(type, codeGenerator) {
+    return !codeGenerator.typeMapping.hasOwnProperty(getBaseTypeAndListLevels(type).baseType);
 }
 function normalizeTextName(rawPropertyName) {
     try {

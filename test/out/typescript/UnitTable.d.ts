@@ -2,5 +2,5 @@ interface Unit {
 	/**  */
 	unitId : string,
 	/**  */
-	stats : StatSet,
+	stats : StatSetId,
 }

@@ -1,7 +1,7 @@
 interface StatSet {
-	/** Unquie identifer for a a set of stats. */
+	/** Unique identifer for a a set of stats. */
 	statSetId : string,
-	/** Determines the amount of a hits a unit could take before perishing. */
+	/** Determines the amount of a hits a unit can take before perishing. */
 	health : number,
 	/** Determines how hard a unit hits, will be reduced by the attacked units armor. */
 	attack : number,

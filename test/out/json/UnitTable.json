@@ -1,29 +1,14 @@
 {
 	"Peon": {
 		"UnitId": "Peon",
-		"Stats": {
-			"StatSetId": "weakSet",
-			"Health": 2,
-			"Attack": 1,
-			"Armor": 2
-		}
+		"Stats": "weakSet"
 	},
 	"Warrior": {
 		"UnitId": "Warrior",
-		"Stats": {
-			"StatSetId": "standardSet",
-			"Health": 5,
-			"Attack": 6,
-			"Armor": 4
-		}
+		"Stats": "standardSet"
 	},
 	"Chief": {
 		"UnitId": "Chief",
-		"Stats": {
-			"StatSetId": "strongSet",
-			"Health": 7,
-			"Attack": 8,
-			"Armor": 5
-		}
+		"Stats": "strongSet"
 	}
 }
