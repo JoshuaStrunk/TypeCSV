@@ -342,7 +342,7 @@ function outputUnityImporter(pathToOutDir) {
         var headerRow = tableData.headerRow;
         var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         mainDataImporterFile += "\t[JsonObject(MemberSerialization.OptIn)]\n";
-        mainDataImporterFile += "public struct " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "\n\t{\n";
+        mainDataImporterFile += "\tpublic struct " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "\n\t{\n";
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_2 = headerRow[i].propertyName;
@@ -361,7 +361,7 @@ function outputUnityImporter(pathToOutDir) {
             }
             mainDataImporterFile += "\n";
         }
-        mainDataImporterFile += "\n\t\tpublic " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "(Raw rawData)\n{\n";
+        mainDataImporterFile += "\n\t\tpublic " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "(Raw rawData)\n\t\t{\n";
         mainDataImporterFile += "\t\t\tthis.rawData = rawData;\n";
         mainDataImporterFile += "\t\t}\n\n";
         mainDataImporterFile += "\t\t[JsonProperty]\n";

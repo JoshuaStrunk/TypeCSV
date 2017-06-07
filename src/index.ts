@@ -470,7 +470,7 @@ function outputUnityImporter(pathToOutDir:string)
         
         let normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         mainDataImporterFile += "\t[JsonObject(MemberSerialization.OptIn)]\n"
-        mainDataImporterFile += `\public struct ${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}\n\t{\n`
+        mainDataImporterFile += `\tpublic struct ${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}\n\t{\n`
         for(let i=0; i<headerRow.length;i++) {
             let type = headerRow[i].propertyType;
             let name = headerRow[i].propertyName;
@@ -497,7 +497,7 @@ function outputUnityImporter(pathToOutDir:string)
 
         }
 
-        mainDataImporterFile += `\n\t\tpublic ${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}(Raw rawData)\n{\n`;
+        mainDataImporterFile += `\n\t\tpublic ${styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling)}(Raw rawData)\n\t\t{\n`;
         mainDataImporterFile += `\t\t\tthis.rawData = rawData;\n`;        
         mainDataImporterFile += `\t\t}\n\n`;
         

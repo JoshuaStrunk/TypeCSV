@@ -33,7 +33,7 @@ public static class GameData
 	};
 
 	[JsonObject(MemberSerialization.OptIn)]
-public struct StatSet
+	public struct StatSet
 	{
 		/// <summary>Unique identifer for a a set of stats.
 		public StatSetId statSetId { get{ return rawData.statSetId; } }
@@ -49,7 +49,7 @@ public struct StatSet
 
 
 		public StatSet(Raw rawData)
-{
+		{
 			this.rawData = rawData;
 		}
 
@@ -64,7 +64,7 @@ public struct StatSet
 		}
 	}
 	[JsonObject(MemberSerialization.OptIn)]
-public struct Unit
+	public struct Unit
 	{
 		public UnitId unitId { get{ return rawData.unitId; } }
 
@@ -72,7 +72,7 @@ public struct Unit
 
 
 		public Unit(Raw rawData)
-{
+		{
 			this.rawData = rawData;
 		}
 
