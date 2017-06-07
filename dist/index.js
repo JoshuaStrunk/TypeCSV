@@ -74,7 +74,7 @@ var validTypes = {
         for (var tableName in tableDataLookup) {
             outputTable(tableDataLookup[tableName], typedTables[tableName], pathToOutDir);
         }
-        outputUnityImporter("");
+        outputUnityImporter(pathToOutDir);
     }
     catch (e) {
         console.log(JSON.stringify(e));
@@ -303,21 +303,27 @@ function outputTable(tableData, typedTableData, pathToOutDir) {
 function outputUnityImporter(pathToOutDir) {
     var mainDataImporterFile = "";
     var codeGenSettings = config.codeGenerators["csharp"];
-    mainDataImporterFile += "public static class Data\n{\n";
+    mainDataImporterFile += "using System.Collections.Generic;\n" +
+        "using System.Linq;\n" +
+        "using Newtonsoft.Json;\n\n";
+    mainDataImporterFile += "public static class GameData\n{\n";
     for (var tableId in tableDataLookup) {
         var tableData = tableDataLookup[tableId];
         var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         var normalizedCollectionName = normalizeTextName(tableData.tableName);
-        mainDataImporterFile += "\tpublic static ReadOnlyDictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "> " + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " { get; private set; };\n";
+        mainDataImporterFile += "\tpublic static Dictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "> " + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " { get; private set; }\n";
     }
-    mainDataImporterFile += "\n\tpublic static Load(Dictionary<string,string> dataSource)\n\t{\n";
+    mainDataImporterFile += "\n\tpublic static void Load(Dictionary<string,string> dataSource)\n\t{\n";
     for (var tableId in tableDataLookup) {
         var tableData = tableDataLookup[tableId];
         var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         var normalizedCollectionName = normalizeTextName(tableData.tableName);
         var objectName = styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling);
-        mainDataImporterFile += "\t\t" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " = new ReadOnlyDictionary(JsonConvert.DeserializeObject<Dictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + objectName + ".Raw>>(dataSource[\"" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectNameStyling) + "\"]).ToDictionary(keyValuePair => keyValuePair.Key, new" + objectName + "(keyValuePair => keyValuePair.Value)));\n";
+        mainDataImporterFile += "\t\t" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectPropertyNameStyling) + " = JsonConvert.DeserializeObject<Dictionary<" + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + "," + objectName + ".Raw>>(dataSource[\"" + styleNormalizedName(normalizedCollectionName, codeGenSettings.objectNameStyling) + "\"]).ToDictionary(keyValuePair => keyValuePair.Key, keyValuePair => new " + objectName + "(keyValuePair.Value));\n";
     }
+    mainDataImporterFile += "\t}\n";
+    mainDataImporterFile += "\n\tpublic static void Load()\n\t{\n";
+    mainDataImporterFile += "\n\t\tLoad(JsonConvert.DeserializeObject<Dictionary<string,string>>((UnityEngine.Resources.Load(\"GameData\") as UnityEngine.TextAsset).text));\n";
     mainDataImporterFile += "\t}\n";
     mainDataImporterFile += "\n";
     for (var tableId in tableDataLookup) {
@@ -336,7 +342,7 @@ function outputUnityImporter(pathToOutDir) {
         var headerRow = tableData.headerRow;
         var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
         mainDataImporterFile += "\t[JsonObject(MemberSerialization.OptIn)]\n";
-        mainDataImporterFile += "\tprivate struct " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "\n\t{\n";
+        mainDataImporterFile += "public struct " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "\n\t{\n";
         for (var i = 0; i < headerRow.length; i++) {
             var type = headerRow[i].propertyType;
             var name_2 = headerRow[i].propertyName;
@@ -348,13 +354,16 @@ function outputUnityImporter(pathToOutDir) {
                 mainDataImporterFile += "\t\tpublic " + styleNormalizedName(normalizedObjectName.concat(["id"]), codeGenSettings.objectNameStyling) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "; } }\n";
             }
             else if (isTableReferenceType(type, codeGenSettings)) {
-                mainDataImporterFile += "\t\tpublic " + referenceMapType(type, codeGenSettings, codeGenSettings.listType) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return Data." + styleNormalizedName(normalizeTextName(type), codeGenSettings.objectPropertyNameStyling) + "[rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "]; } }\n";
+                mainDataImporterFile += "\t\tpublic " + referenceMapType(type, codeGenSettings, codeGenSettings.listType) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return GameData." + styleNormalizedName(normalizeTextName(type), codeGenSettings.objectPropertyNameStyling) + "[rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "]; } }\n";
             }
             else {
                 mainDataImporterFile += "\t\tpublic " + referenceMapType(type, codeGenSettings, codeGenSettings.listType) + " " + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + " { get{ return rawData." + styleNormalizedName(name_2, codeGenSettings.objectPropertyNameStyling) + "; } }\n";
             }
             mainDataImporterFile += "\n";
         }
+        mainDataImporterFile += "\n\t\tpublic " + styleNormalizedName(normalizedObjectName, codeGenSettings.objectNameStyling) + "(Raw rawData)\n{\n";
+        mainDataImporterFile += "\t\t\tthis.rawData = rawData;\n";
+        mainDataImporterFile += "\t\t}\n\n";
         mainDataImporterFile += "\t\t[JsonProperty]\n";
         mainDataImporterFile += "\t\tprivate Raw rawData;\n";
         mainDataImporterFile += "\t\tpublic struct Raw\n\t\t{\n";
@@ -377,7 +386,38 @@ function outputUnityImporter(pathToOutDir) {
         mainDataImporterFile += "\t}\n";
     }
     mainDataImporterFile += "}";
-    console.log(mainDataImporterFile);
+    var mainDataJSONObject = {};
+    for (var entryId in tableDataLookup) {
+        var tableData = tableDataLookup[entryId];
+        var headerRow = tableData.headerRow;
+        var normalizedObjectName = normalizeTextName(tableData.tableInfo.singleEntryObjectName);
+        var tableDataObject = {};
+        for (var rowIndex = 0; rowIndex < tableData.parsedCSVEntryData.length; rowIndex++) {
+            var tableEntryObject = {};
+            for (var columnIndex = 0; columnIndex < tableData.headerRow.length; columnIndex++) {
+                var type = headerRow[columnIndex].propertyType;
+                var name_4 = headerRow[columnIndex].propertyName;
+                var fieldName = styleNormalizedName(name_4, "camelCase");
+                if (tableData.primaryColumnIndex == columnIndex) {
+                    tableEntryObject[fieldName] = styleNormalizedName(normalizeTextName(tableData.parsedCSVEntryData[rowIndex][columnIndex]), "CamelCase");
+                }
+                else if (isTableReferenceType(type, codeGenSettings)) {
+                    tableEntryObject[fieldName] = styleNormalizedName(normalizeTextName(tableData.parsedCSVEntryData[rowIndex][columnIndex]), "CamelCase");
+                }
+                else {
+                    tableEntryObject[fieldName] = typeEntry(tableData.parsedCSVEntryData[rowIndex][columnIndex], type);
+                }
+            }
+            tableDataObject[styleNormalizedName(normalizeTextName(tableData.parsedCSVEntryData[rowIndex][tableData.primaryColumnIndex]), "CamelCase")] = tableEntryObject;
+        }
+        mainDataJSONObject[styleNormalizedName(normalizeTextName(tableData.tableName), codeGenSettings.objectNameStyling)] = JSON.stringify(tableDataObject);
+    }
+    var outDir = path.join(pathToOutDir, "Unity");
+    tryMakeDir(outDir);
+    fs.writeFile(path.join(outDir, "GameData.cs"), mainDataImporterFile, function (err) { if (err !== null)
+        console.log(JSON.stringify(err)); });
+    fs.writeFile(path.join(outDir, "GameData.json"), JSON.stringify(mainDataJSONObject), function (err) { if (err !== null)
+        console.log(JSON.stringify(err)); });
 }
 function rawMapType(type, codeGenerator, listType) {
     var typeMapping = codeGenerator.typeMapping;
